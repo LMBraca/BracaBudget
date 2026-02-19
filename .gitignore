@@ -1,0 +1,75 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+*.xcuserdata/
+xcuserdata/
+
+# Xcode / workspace settings
+**/xcshareddata/WorkspaceSettings.xcsettings
+
+# Xcode project settings that should NOT be committed (legacy)
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+*.moved-aside
+
+# Source control metadata Xcode may generate locally
+*.xccheckout
+*.xcscmblueprint
+
+# Swift Package Manager
+.build/
+Packages/
+.swiftpm/
+*.swiftpm
+
+# Carthage
+Carthage/Checkouts/
+Carthage/Build/
+
+# Accio
+Dependencies/
+.accio/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+
+# Logs / temp / backups
+*.log
+*.swp
+*.swo
+*~
+*.bak
+
+# Secrets
+Secrets.swift
+secrets.plist
+*.plist.private
+
+# Local databases
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
+*.db
+
+# IDEs
+.idea/
+.vscode/
