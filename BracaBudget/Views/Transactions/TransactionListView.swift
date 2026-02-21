@@ -44,11 +44,20 @@ struct TransactionListView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if filtered.isEmpty {
-                    emptyState
-                } else {
-                    transactionList
+            VStack(spacing: 0) {
+                // Filter bar - always visible
+                typeFilterBar
+                    .padding(.horizontal)
+                    .padding(.vertical, 12)
+                    .background(Color(.systemGroupedBackground))
+                
+                // Content area
+                Group {
+                    if filtered.isEmpty {
+                        emptyState
+                    } else {
+                        transactionList
+                    }
                 }
             }
             .background(Color(.systemGroupedBackground))
@@ -101,12 +110,6 @@ struct TransactionListView: View {
 
     private var transactionList: some View {
         List {
-            Section {
-                typeFilterBar
-                    .listRowInsets(EdgeInsets())
-                    .listRowBackground(Color.clear)
-            }
-            
             ForEach(groupedByDay, id: \.day) { group in
                 Section(header: dayHeader(group.day)) {
                     ForEach(group.transactions) { t in

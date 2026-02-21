@@ -60,6 +60,9 @@ struct SpendingPowerProvider: TimelineProvider {
         let currencyCode = sharedDefaults?.string(forKey: "currencyCode") ?? "USD"
         let conversionRate = sharedDefaults?.double(forKey: "conversionRate") ?? 1.0
         
+        let weekStartRaw = sharedDefaults?.string(forKey: "weekStart") ?? "Sunday"
+        let weekStartsOnMonday = (weekStartRaw == "Monday")
+        
         // If no budget set, show placeholder
         guard monthlyEnvelope > 0 else {
             return SpendingPowerEntry(
@@ -98,10 +101,12 @@ struct SpendingPowerProvider: TimelineProvider {
         let weeksInMonth = Double(daysInMonth) / 7.0
         let weeklyAllowance = weeksInMonth > 0 ? discretionaryPool / weeksInMonth : 0
         
-        // Calculate week boundaries
+        // Calculate week boundaries respecting user preference
         let now = Date()
-        let weekStart = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
-        let weekStartDate = calendar.date(from: weekStart) ?? now
+        let desiredFirstWeekday = weekStartsOnMonday ? 2 : 1 // 1=Sunday, 2=Monday
+        let weekday = calendar.component(.weekday, from: now)
+        let delta = (weekday - desiredFirstWeekday + 7) % 7
+        let weekStartDate = calendar.date(byAdding: .day, value: -delta, to: calendar.startOfDay(for: now)) ?? now
         let weekEndDate = calendar.date(byAdding: .day, value: 6, to: weekStartDate) ?? now
         
         // Fetch goal category names

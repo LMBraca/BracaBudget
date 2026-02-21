@@ -65,25 +65,38 @@ struct GoalListView: View {
     // MARK: - Goal list
 
     private var goalList: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                ForEach(filteredGoals) { goal in
-                    GoalCard(
-                        goal: goal,
-                        spent: spentAmount(for: goal),
-                        currencyCode: settings.currencyCode,
-                        transactions: relevantTransactions(for: goal)
-                    )
-                    .contextMenu {
-                        Button("Edit") { editingGoal = goal }
-                        Button("Delete", role: .destructive) { delete(goal) }
+        List {
+            ForEach(filteredGoals) { goal in
+                GoalCard(
+                    goal: goal,
+                    spent: spentAmount(for: goal),
+                    currencyCode: settings.currencyCode,
+                    transactions: relevantTransactions(for: goal)
+                )
+                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        delete(goal)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
                     }
-                    .onTapGesture { editingGoal = goal }
                 }
+                .swipeActions(edge: .leading) {
+                    Button {
+                        editingGoal = goal
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    .tint(.blue)
+                }
+                .onTapGesture { editingGoal = goal }
             }
-            .padding(.horizontal)
-            .padding(.bottom, 24)
         }
+        .listStyle(.plain)
+        .background(Color(.systemGroupedBackground))
+        .scrollContentBackground(.hidden)
     }
 
     // MARK: - Empty state
@@ -135,12 +148,15 @@ private struct GoalCard: View {
 
     @State private var expanded = false
 
-    private var remaining: Double { max(0, goal.spendingLimit - spent) }
+    private var limit: Double { goal.spendingLimit }
+    private var remaining: Double { max(0, limit - spent) }
+
     private var ratio: Double {
-        guard goal.spendingLimit > 0 else { return 0 }
-        return min(spent / goal.spendingLimit, 1.0)
+        guard limit > 0 else { return 0 }
+        return min(spent / limit, 1.0)
     }
-    private var isOver: Bool { spent > goal.spendingLimit }
+
+    private var isOver: Bool { spent > limit }
 
     private var statusColor: Color {
         if isOver              { return .red }
@@ -162,11 +178,12 @@ private struct GoalCard: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
                     Text(isOver
-                         ? "Over by " + (spent - goal.spendingLimit).formatted(currency: currencyCode)
+                         ? "Over by " + (spent - limit).formatted(currency: currencyCode)
                          : remaining.formatted(currency: currencyCode) + " left")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(isOver ? .red : .primary)
-                    Text(spent.formatted(currency: currencyCode) + " of " + goal.spendingLimit.formatted(currency: currencyCode))
+
+                    Text(spent.formatted(currency: currencyCode) + " of " + limit.formatted(currency: currencyCode))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -180,7 +197,7 @@ private struct GoalCard: View {
                     Text(String(format: "%.0f%%", ratio * 100) + " used")
                         .font(.caption2).foregroundStyle(.secondary)
                     Spacer()
-                    Text(goal.spendingLimit.formatted(currency: currencyCode) + " limit")
+                    Text(limit.formatted(currency: currencyCode) + " limit")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }

@@ -15,6 +15,7 @@ struct BracaBudgetApp: App {
             Category.self,
             Goal.self,
             RecurringBill.self,
+            MonthlySavingsSnapshot.self,
         ])
         do {
             // Use shared container so widgets can access the same data

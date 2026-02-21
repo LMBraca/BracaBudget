@@ -35,6 +35,18 @@ struct BudgetView: View {
     /// When true, amounts are shown in the budget currency (e.g. USD).
     /// When false (default), amounts are shown in the spending currency (e.g. MXN).
     @State private var showInBudgetCurrency = false
+    
+    // MARK: - Budget Calculations (Single Source of Truth)
+    
+    private var calc: BudgetCalculations {
+        BudgetCalculations(
+            settings: settings,
+            converter: converter,
+            activeBills: activeBills,
+            goals: goals,
+            allTransactions: allTransactions
+        )
+    }
 
     // MARK: - Currency helpers
 
@@ -45,7 +57,7 @@ struct BudgetView: View {
     private var displayCode: String {
         (needsConversion && showInBudgetCurrency) ? budgetCode : spendingCode
     }
-
+    
     /// Formats a value that is already in the SPENDING currency.
     private func fmt(_ valueInSpendingCurrency: Double) -> String {
         if needsConversion && showInBudgetCurrency {
@@ -61,59 +73,6 @@ struct BudgetView: View {
             return (valueInBudgetCurrency * converter.rate).formatted(currency: spendingCode)
         }
         return valueInBudgetCurrency.formatted(currency: budgetCode)
-    }
-
-    // MARK: - Envelope math (all in SPENDING currency)
-
-    /// The monthly envelope converted to spending currency.
-    private var envelopeInSpendingCurrency: Double {
-        settings.monthlyEnvelope * (needsConversion ? converter.rate : 1)
-    }
-
-    private var committedMonthly: Double {
-        activeBills.reduce(0) { $0 + $1.monthlyEquivalent }
-    }
-
-    private var allocatedMonthly: Double {
-        goals.filter { $0.period == .monthly }.reduce(0) { $0 + $1.spendingLimit }
-    }
-
-    private var discretionaryPool: Double {
-        max(0, envelopeInSpendingCurrency - committedMonthly - allocatedMonthly)
-    }
-
-    private var weeksInMonth: Double {
-        let days = Calendar.current.range(of: .day, in: .month, for: .now)?.count ?? 30
-        return Double(days) / 7.0
-    }
-
-    private var weeklyAllowance: Double {
-        guard weeksInMonth > 0 else { return 0 }
-        return discretionaryPool / weeksInMonth
-    }
-
-    private var goalCategoryNames: Set<String> {
-        Set(goals.map { $0.categoryName })
-    }
-
-    private var weeklyDiscretionarySpent: Double {
-        let start = Date.now.startOfWeek
-        let end   = Date.now.endOfWeek
-        return allTransactions.filter { t in
-            t.type == .expense &&
-            t.recurringBillID == nil &&
-            !goalCategoryNames.contains(t.categoryName) &&
-            t.date >= start && t.date <= end
-        }.reduce(0) { $0 + $1.amount }
-    }
-
-    private var weeklyAvailable: Double { weeklyAllowance - weeklyDiscretionarySpent }
-
-    private var daysLeftInWeek: Int {
-        let cal = Calendar.current
-        return max(0, cal.dateComponents([.day],
-                                         from: cal.startOfDay(for: .now),
-                                         to: Date.now.endOfWeek).day ?? 0)
     }
 
     // MARK: - Body
@@ -264,9 +223,9 @@ struct BudgetView: View {
     // MARK: - Spending power card
 
     private var spendingPowerCard: some View {
-        let positive = weeklyAvailable >= 0
-        let progress = weeklyAllowance > 0
-            ? min(weeklyDiscretionarySpent / weeklyAllowance, 1.0)
+        let positive = calc.weeklyAvailable >= 0
+        let progress = calc.weeklyAllowance > 0
+            ? min(calc.weeklyDiscretionarySpent / calc.weeklyAllowance, 1.0)
             : 0.0
         let weekRange = "\(Date.now.startOfWeek.formatted(.dateTime.month(.abbreviated).day())) – \(Date.now.endOfWeek.formatted(.dateTime.month(.abbreviated).day()))"
 
@@ -293,7 +252,7 @@ struct BudgetView: View {
                 Text(positive ? "Available this week" : "Over limit by")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text(fmt(abs(weeklyAvailable)))
+                Text(fmt(abs(calc.weeklyAvailable)))
                     .font(.system(size: 52, weight: .bold, design: .rounded))
                     .foregroundStyle(positive ? .green : .red)
                     .minimumScaleFactor(0.4)
@@ -306,18 +265,18 @@ struct BudgetView: View {
                     .tint(positive ? (progress > 0.8 ? .orange : .green) : .red)
                     .scaleEffect(x: 1, y: 1.4)
                 HStack {
-                    Text(fmt(weeklyDiscretionarySpent) + " spent")
+                    Text(fmt(calc.weeklyDiscretionarySpent) + " spent")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Text("of " + fmt(weeklyAllowance))
+                    Text("of " + fmt(calc.weeklyAllowance))
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
             .padding(.horizontal, 4)
 
-            if positive && daysLeftInWeek > 0 && weeklyAllowance > 0 {
-                let perDay = weeklyAvailable / Double(daysLeftInWeek)
-                Text("≈ \(fmt(perDay)) per day · \(daysLeftInWeek) day\(daysLeftInWeek == 1 ? "" : "s") left")
+            if positive && calc.daysLeftInWeek > 0 && calc.weeklyAllowance > 0 {
+                let perDay = calc.weeklyAvailable / Double(calc.daysLeftInWeek)
+                Text("≈ \(fmt(perDay)) per day · \(calc.daysLeftInWeek) day\(calc.daysLeftInWeek == 1 ? "" : "s") left")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -365,8 +324,8 @@ struct BudgetView: View {
                 }
             }
 
-            mathRow("Committed bills",    value: committedMonthly,  color: .orange, sign: "−")
-            mathRow("Allocated to goals", value: allocatedMonthly,  color: .purple, sign: "−")
+            mathRow("Committed bills",    value: calc.committedMonthly,  color: .orange, sign: "−")
+            mathRow("Allocated to goals", value: calc.allocatedMonthly,  color: .purple, sign: "−")
 
             Divider()
 
@@ -374,17 +333,17 @@ struct BudgetView: View {
                 Text("Discretionary pool")
                     .font(.subheadline.weight(.semibold))
                 Spacer()
-                Text(fmt(discretionaryPool))
+                Text(fmt(calc.discretionaryPool))
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(discretionaryPool > 0 ? Color.primary : Color.red)
+                    .foregroundStyle(calc.discretionaryPool > 0 ? Color.primary : Color.red)
                     .contentTransition(.numericText())
             }
 
             HStack {
-                Text(String(format: "÷ %.1f weeks this month", weeksInMonth))
+                Text(String(format: "÷ %.1f weeks this month", calc.weeksInMonth))
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Text("= \(fmt(weeklyAllowance)) / week")
+                Text("= \(fmt(calc.weeklyAllowance)) / week")
                     .font(.caption.weight(.medium)).foregroundStyle(.secondary)
                     .contentTransition(.numericText())
             }
@@ -409,62 +368,77 @@ struct BudgetView: View {
     // MARK: - Recurring bills card
 
     private var recurringBillsCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
             HStack {
                 Text("Recurring Bills")
                     .font(.headline)
                 Spacer()
-                Text(fmt(committedMonthly) + "/mo")
+                Text(fmt(calc.committedMonthly) + "/mo")
                     .font(.caption).foregroundStyle(.secondary)
                 Button { showAddBill = true } label: {
                     Image(systemName: "plus.circle")
                 }
             }
+            .padding(.horizontal)
+            .padding(.top)
+            .padding(.bottom, 8)
 
+            // Content
             if activeBills.isEmpty {
                 Text("No recurring bills added. Tap + to add fixed expenses like rent or phone.")
                     .font(.caption).foregroundStyle(.secondary)
+                    .padding(.horizontal)
+                    .padding(.bottom)
             } else {
-                ForEach(activeBills) { bill in
-                    HStack(spacing: 12) {
-                        ZStack {
-                            Circle()
-                                .fill(Color(hex: bill.categoryColorHex).opacity(0.15))
-                                .frame(width: 36, height: 36)
-                            Image(systemName: bill.categoryIcon)
-                                .foregroundStyle(Color(hex: bill.categoryColorHex))
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(bill.name).font(.subheadline)
-                            Text(bill.frequency.rawValue)
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text(fmt(bill.amount))
-                                .font(.subheadline.weight(.medium))
-                            if bill.frequency != .monthly {
-                                Text("≈ \(fmt(bill.monthlyEquivalent))/mo")
-                                    .font(.caption2).foregroundStyle(.secondary)
+                List {
+                    ForEach(activeBills) { bill in
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color(hex: bill.categoryColorHex).opacity(0.15))
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: bill.categoryIcon)
+                                    .foregroundStyle(Color(hex: bill.categoryColorHex))
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(bill.name).font(.subheadline)
+                                Text(bill.frequency.rawValue)
+                                    .font(.caption).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(fmt(bill.amount))
+                                    .font(.subheadline.weight(.medium))
+                                if bill.frequency != .monthly {
+                                    Text("≈ \(fmt(bill.monthlyEquivalent))/mo")
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
                             }
                         }
-                    }
-                    .swipeActions(edge: .trailing) {
-                        Button(role: .destructive) { deleteBill(bill) } label: {
-                            Label("Delete", systemImage: "trash")
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) { deleteBill(bill) } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
-                    }
-                    .swipeActions(edge: .leading) {
-                        Button { editingBill = bill } label: {
-                            Label("Edit", systemImage: "pencil")
+                        .swipeActions(edge: .leading) {
+                            Button { editingBill = bill } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(.blue)
                         }
-                        .tint(.blue)
+                        .onTapGesture { editingBill = bill }
                     }
-                    .onTapGesture { editingBill = bill }
                 }
+                .frame(height: CGFloat(activeBills.count) * 60) // Approximate row height
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .scrollDisabled(true)
             }
         }
-        .padding()
         .background(Color(.secondarySystemGroupedBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
@@ -479,7 +453,7 @@ struct BudgetView: View {
                 Text("Planned Spending (Goals)")
                     .font(.headline)
                 Spacer()
-                Text(fmt(allocatedMonthly) + "/mo")
+                Text(fmt(calc.allocatedMonthly) + "/mo")
                     .font(.caption).foregroundStyle(.secondary)
                 Button { selectedTab.wrappedValue = .goals } label: {
                     Image(systemName: "arrow.right.circle")

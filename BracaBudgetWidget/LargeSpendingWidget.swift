@@ -22,10 +22,21 @@ struct LargeSpendingWidget: View {
     }
 
     private var weekRange: String {
-        let start = Date().startOfWeek
-        let end = Date().endOfWeek
         let formatter = DateFormatter()
         formatter.dateFormat = "MMM d"
+
+        let sharedDefaults = UserDefaults(suiteName: "group.com.luisbracamontes.bracabudget")
+        let weekStartRaw = sharedDefaults?.string(forKey: "weekStart") ?? "Sunday"
+        let weekStartsOnMonday = (weekStartRaw == "Monday")
+
+        let cal = Calendar.current
+        let now = Date()
+        let desiredFirstWeekday = weekStartsOnMonday ? 2 : 1 // 1=Sunday, 2=Monday
+        let weekday = cal.component(.weekday, from: now)
+        let delta = (weekday - desiredFirstWeekday + 7) % 7
+        let start = cal.date(byAdding: .day, value: -delta, to: cal.startOfDay(for: now)) ?? now
+        let end   = cal.date(byAdding: .day, value: 6, to: start) ?? now
+
         return "\(formatter.string(from: start)) – \(formatter.string(from: end))"
     }
 

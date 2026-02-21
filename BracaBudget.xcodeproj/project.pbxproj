@@ -11,6 +11,8 @@
 		004513532F46C10000F1EA44 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 004513522F46C10000F1EA44 /* SwiftUI.framework */; };
 		004513602F46C10200F1EA44 /* BracaBudgetWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0045134E2F46C10000F1EA44 /* BracaBudgetWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		004513862F46F96400F1EA44 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 004513852F46F96400F1EA44 /* AppIntents.framework */; };
+		004514052F4A329400F1EA44 /* WeeklyLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004514042F4A329400F1EA44 /* WeeklyLog.swift */; };
+		004514072F4A32B800F1EA44 /* WeeklyLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 004514062F4A32B800F1EA44 /* WeeklyLogView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +59,8 @@
 		004513522F46C10000F1EA44 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		004513692F46E3A000F1EA44 /* BracaBudgetWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BracaBudgetWidgetExtension.entitlements; sourceTree = "<group>"; };
 		004513852F46F96400F1EA44 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/AppIntents.framework; sourceTree = DEVELOPER_DIR; };
+		004514042F4A329400F1EA44 /* WeeklyLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyLog.swift; sourceTree = "<group>"; };
+		004514062F4A32B800F1EA44 /* WeeklyLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyLogView.swift; sourceTree = "<group>"; };
 		00B02E1E2F461FBD004C89CB /* BracaBudget.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BracaBudget.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		00B02E2D2F461FBF004C89CB /* BracaBudgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BracaBudgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00B02E372F461FBF004C89CB /* BracaBudgetUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BracaBudgetUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -77,6 +81,7 @@
 				Helpers/SharedContainer.swift,
 				Models/Category.swift,
 				Models/Goal.swift,
+				Models/MonthlySavingsSnapshot.swift,
 				Models/RecurringBill.swift,
 				Models/Transaction.swift,
 			);
@@ -156,6 +161,8 @@
 				004513542F46C10000F1EA44 /* BracaBudgetWidget */,
 				0045134F2F46C10000F1EA44 /* Frameworks */,
 				00B02E1F2F461FBD004C89CB /* Products */,
+				004514042F4A329400F1EA44 /* WeeklyLog.swift */,
+				004514062F4A32B800F1EA44 /* WeeklyLogView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -350,6 +357,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				004514052F4A329400F1EA44 /* WeeklyLog.swift in Sources */,
+				004514072F4A32B800F1EA44 /* WeeklyLogView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -12,15 +12,22 @@ struct SettingsView: View {
     @State private var showSpendingCurrencyPicker = false
     @State private var showBudgetCurrencyPicker   = false
     @State private var showDeleteConfirm          = false
+    @State private var showLoadTestDataConfirm    = false
     @State private var isRefreshingRate           = false
 
     var body: some View {
         NavigationStack {
             Form {
                 currencySection
+                weekStartSection
+                monthRangeSection
                 if settings.hasDualCurrency {
                     exchangeRateSection
                 }
+                categoriesSection
+                #if DEBUG
+                testModeSection
+                #endif
                 dangerZoneSection
                 shortcutsSection
                 aboutSection
@@ -57,6 +64,7 @@ struct SettingsView: View {
             } message: {
                 Text("This will permanently remove all transactions, goals, bills, and categories. This cannot be undone.")
             }
+            
         }
     }
 
@@ -104,6 +112,60 @@ struct SettingsView: View {
                 Text("Set a different budget currency if your income is in a different currency from your daily spending.")
             }
         }
+    }
+
+    private var weekStartSection: some View {
+        Section {
+            Picker("Week Starts On", selection: Binding(
+                get: { settings.weekStart },
+                set: { settings.weekStart = $0 }
+            )) {
+                ForEach(WeekStart.allCases, id: \.self) { ws in
+                    Text(ws.rawValue).tag(ws)
+                }
+            }
+        } header: {
+            Text("Week Range")
+        } footer: {
+            Text("This affects weekly ranges used in the Budget and Widgets.")
+        }
+    }
+    
+    private var monthRangeSection: some View {
+        Section {
+            Picker("Month Starts On Day", selection: Binding(
+                get: { settings.customMonthStartDay },
+                set: { settings.customMonthStartDay = $0 }
+            )) {
+                ForEach(1...28, id: \.self) { day in
+                    if day == 1 {
+                        Text("1st (Calendar Month)").tag(day)
+                    } else {
+                        Text(ordinalString(for: day)).tag(day)
+                    }
+                }
+            }
+        } header: {
+            Text("Month Range")
+        } footer: {
+            Text(monthRangeFooter)
+        }
+    }
+    
+    private var monthRangeFooter: String {
+        if settings.customMonthStartDay == 1 {
+            return "Using standard calendar months (1st to last day of month)."
+        } else {
+            let startDay = settings.customMonthStartDay
+            let endDay = startDay - 1
+            return "Your months run from the \(ordinalString(for: startDay)) of one month to the \(ordinalString(for: endDay)) of the next month. This affects all budget calculations and transaction tracking."
+        }
+    }
+    
+    private func ordinalString(for day: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .ordinal
+        return formatter.string(from: NSNumber(value: day)) ?? "\(day)th"
     }
 
     // MARK: - Exchange rate section
@@ -201,6 +263,16 @@ struct SettingsView: View {
             } label: {
                 Label("Delete All Data", systemImage: "trash")
             }
+            .confirmationDialog(
+                "Delete all data?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Delete Everything", role: .destructive, action: deleteAllData)
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently remove all transactions, goals, bills, and categories. This cannot be undone.")
+            }
         } header: {
             Text("Danger Zone")
         } footer: {
@@ -233,13 +305,17 @@ struct SettingsView: View {
             try modelContext.delete(model: Goal.self)
             try modelContext.delete(model: RecurringBill.self)
             let customPredicate = #Predicate<Category> { !$0.isDefault }
-            try modelContext.delete(model: Category.self, where: customPredicate)
+            try modelContext.delete(model: Category.self)
             try modelContext.save()
         } catch {
             print("Delete all data failed: \(error)")
         }
         settings.hasSeededCategories = false
         seedDefaultCategoriesIfNeeded(context: modelContext)
+    }
+    
+    private func loadTestData() {
+        TestDataLoader.loadTestData(into: modelContext, settings: settings)
     }
 
     private func formattedRateDate(_ isoDate: String) -> String {
@@ -251,6 +327,49 @@ struct SettingsView: View {
         formatter.timeStyle = .none
         return formatter.string(from: date)
     }
+    
+    // MARK: - Categories
+    
+    private var categoriesSection: some View {
+        Section {
+            NavigationLink(destination: ManageCategoriesView()) {
+                Label("Manage Categories", systemImage: "tag")
+            }
+        } header: {
+            Text("Categories")
+        } footer: {
+            Text("Edit or delete custom categories.")
+        }
+    }
+    
+    // MARK: - Test Mode (DEBUG only)
+    
+    #if DEBUG
+    private var testModeSection: some View {
+        Section {
+            Button {
+                showLoadTestDataConfirm = true
+            } label: {
+                Label("Load Test Data", systemImage: "hammer.fill")
+                    .foregroundStyle(.orange)
+            }
+            .confirmationDialog(
+                "Load test data?",
+                isPresented: $showLoadTestDataConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Load Test Data", role: .destructive, action: loadTestData)
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will DELETE all existing data and replace it with comprehensive test data for testing rollbacks, budgets, and goals.")
+            }
+        } header: {
+            Text("Developer Tools")
+        } footer: {
+            Text("Loads comprehensive test data including transactions with recurring bills, various categories, dates spanning multiple weeks/months, income entries, and edge cases for testing rollback functionality and budget calculations. WARNING: This will delete all existing data.")
+        }
+    }
+    #endif
     
     // MARK: - Shortcuts
 
@@ -401,3 +520,4 @@ struct CurrencyPickerSheet: View {
         }
     }
 }
+

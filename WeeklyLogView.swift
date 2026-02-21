@@ -82,3 +82,5 @@ struct WeeklyLogView: View {
             .modelContainer(for: WeeklyLog.self, inMemory: true)
     }
 }
+
+

@@ -11,11 +11,14 @@ struct AddCategoryView: View {
     var existing: Category? = nil
     var isExpense: Bool = true   // used only when creating new
 
+    @Query(sort: \Category.sortOrder) private var allCategories: [Category]
+
     // MARK: - Form state
 
     @State private var name     = ""
     @State private var icon     = "square.grid.2x2"
     @State private var colorHex = "#5E81F4"
+    @State private var showDuplicateAlert = false
 
     private var isEditing: Bool { existing != nil }
 
@@ -61,6 +64,26 @@ struct AddCategoryView: View {
                 }
             }
             .onAppear(perform: populateIfEditing)
+            .alert("Duplicate Category", isPresented: $showDuplicateAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("A category with this name already exists. Please choose a different name.")
+            }
+        }
+    }
+    
+    // MARK: - Validation
+    
+    private func isDuplicate(_ name: String) -> Bool {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        return allCategories.contains { category in
+            // Skip the current category if editing
+            if let existing = existing, category.id == existing.id {
+                return false
+            }
+            // Check for duplicate name (case-insensitive) with same expense type
+            return category.name.lowercased() == trimmed.lowercased() &&
+                   category.isExpense == (existing?.isExpense ?? isExpense)
         }
     }
 
@@ -148,6 +171,12 @@ struct AddCategoryView: View {
     private func save() {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
+        
+        // Check for duplicates
+        if isDuplicate(trimmed) {
+            showDuplicateAlert = true
+            return
+        }
 
         if let cat = existing {
             cat.name     = trimmed

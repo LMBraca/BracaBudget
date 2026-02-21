@@ -22,85 +22,22 @@ struct DashboardView: View {
 
     @State private var showAddTransaction = false
 
-    // MARK: - Derived: this-month transactions
-
-    private var monthTransactions: [Transaction] {
-        allTransactions.filter { $0.date.isSameMonth(as: .now) }
-    }
-
-    private var totalIncome: Double {
-        monthTransactions.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
-    }
-
-    private var totalExpenses: Double {
-        monthTransactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
-    }
-
-    private var netBalance: Double { totalIncome - totalExpenses }
-
-    // MARK: - Derived: spending power (weekly)
-
-    /// Sum of fixed recurring bill amounts normalised to one month.
-    private var committedMonthly: Double {
-        activeBills.reduce(0) { $0 + $1.monthlyEquivalent }
-    }
-
-    /// Sum of all monthly goal spending-ceiling limits.
-    private var allocatedMonthly: Double {
-        goals.filter { $0.period == .monthly }.reduce(0) { $0 + $1.spendingLimit }
-    }
-
-    /// The monthly envelope converted to spending currency.
-    private var envelopeInSpendingCurrency: Double {
-        let rate = settings.hasDualCurrency ? converter.rate : 1.0
-        return settings.monthlyEnvelope * max(rate, 1)
-    }
-
-    /// Money left after committed + allocated; this becomes weekly slices.
-    private var discretionaryPool: Double {
-        max(0, envelopeInSpendingCurrency - committedMonthly - allocatedMonthly)
-    }
-
-    private var weeksInCurrentMonth: Double {
-        let days = Calendar.current.range(of: .day, in: .month, for: .now)?.count ?? 30
-        return Double(days) / 7.0
-    }
-
-    private var weeklyAllowance: Double {
-        guard weeksInCurrentMonth > 0 else { return 0 }
-        return discretionaryPool / weeksInCurrentMonth
-    }
-
-    /// Category names that have a goal — their spending is tracked via goals, not the discretionary pool.
-    private var goalCategoryNames: Set<String> {
-        Set(goals.map { $0.categoryName })
-    }
-
-    private var weeklyDiscretionarySpent: Double {
-        let start = Date.now.startOfWeek
-        let end   = Date.now.endOfWeek
-        return allTransactions.filter { t in
-            t.type == .expense &&
-            t.recurringBillID == nil &&
-            !goalCategoryNames.contains(t.categoryName) &&
-            t.date >= start &&
-            t.date <= end
-        }.reduce(0) { $0 + $1.amount }
-    }
-
-    private var weeklyAvailable: Double { weeklyAllowance - weeklyDiscretionarySpent }
-
-    // MARK: - Derived: goals needing attention (>= 70 % spent)
-
-    private var goalsAtRisk: [Goal] {
-        goals.filter { spentRatio(for: $0) >= 0.70 }
-             .sorted { spentRatio(for: $0) > spentRatio(for: $1) }
+    // MARK: - Budget Calculations (Single Source of Truth)
+    
+    private var calc: BudgetCalculations {
+        BudgetCalculations(
+            settings: settings,
+            converter: converter,
+            activeBills: activeBills,
+            goals: goals,
+            allTransactions: allTransactions
+        )
     }
 
     // MARK: - Derived: category-spending donut data (top 6 expense categories this month)
 
     private var categorySpending: [(name: String, colorHex: String, total: Double)] {
-        let grouped = Dictionary(grouping: monthTransactions.filter { $0.type == .expense }) { $0.categoryName }
+        let grouped = Dictionary(grouping: calc.monthTransactions.filter { $0.type == .expense }) { $0.categoryName }
         return grouped
             .map { name, txns in
                 (name: name,
@@ -123,9 +60,10 @@ struct DashboardView: View {
 
                     if settings.monthlyEnvelope > 0 {
                         spendingPowerCard
+                        weeklyBudgetBreakdownCard
                     }
 
-                    if !goalsAtRisk.isEmpty {
+                    if !calc.goalsAtRisk().isEmpty {
                         goalsAtRiskCard
                     }
 
@@ -154,34 +92,47 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: - Balance card
+    // MARK: - Balance card → replaced with Savings Tracker
 
     private var balanceCard: some View {
-        VStack(spacing: 6) {
-            Text("Net Balance")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Text(netBalance.formatted(currency: settings.currencyCode))
-                .font(.system(size: 42, weight: .bold, design: .rounded))
-                .foregroundStyle(netBalance >= 0 ? .green : .red)
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-            Text("This month")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+        NavigationLink(destination: MonthlySavingsView()) {
+            VStack(spacing: 6) {
+                Text("Monthly Savings")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                let thisMon = calculateCurrentMonthPerformance()
+                Text(abs(thisMon).formatted(currency: settings.currencyCode))
+                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                    .foregroundStyle(thisMon >= 0 ? .green : .red)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    Text(thisMon >= 0 ? "Under budget" : "Over budget")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 28)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 16))
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 28)
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .buttonStyle(.plain)
+    }
+    
+    private func calculateCurrentMonthPerformance() -> Double {
+        calc.monthlySavings
     }
 
     // MARK: - Income / expense tiles
 
     private var incomeExpenseRow: some View {
         HStack(spacing: 12) {
-            summaryTile(label: "Income",   amount: totalIncome,   icon: "arrow.down.circle.fill", color: .green)
-            summaryTile(label: "Expenses", amount: totalExpenses, icon: "arrow.up.circle.fill",   color: .red)
+            summaryTile(label: "Income",   amount: calc.totalIncome,   icon: "arrow.down.circle.fill", color: .green)
+            summaryTile(label: "Expenses", amount: calc.totalExpenses, icon: "arrow.up.circle.fill",   color: .red)
         }
     }
 
@@ -205,9 +156,9 @@ struct DashboardView: View {
     // MARK: - Spending power card (tappable → Budget tab)
 
     private var spendingPowerCard: some View {
-        let positive = weeklyAvailable >= 0
-        let progress = weeklyAllowance > 0
-            ? min(weeklyDiscretionarySpent / weeklyAllowance, 1.0)
+        let positive = calc.weeklyAvailable >= 0
+        let progress = calc.weeklyAllowance > 0
+            ? min(calc.weeklyDiscretionarySpent / calc.weeklyAllowance, 1.0)
             : 0.0
 
         return Button { selectedTab.wrappedValue = .budgets } label: {
@@ -223,8 +174,12 @@ struct DashboardView: View {
                         .font(.caption2).foregroundStyle(.tertiary)
                 }
 
+                Text(calc.weekRangeLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
                 HStack(alignment: .lastTextBaseline, spacing: 6) {
-                    Text(abs(weeklyAvailable).formatted(currency: settings.currencyCode))
+                    Text(abs(calc.weeklyAvailable).formatted(currency: settings.currencyCode))
                         .font(.system(size: 30, weight: .bold, design: .rounded))
                         .foregroundStyle(positive ? .green : .red)
                     Text(positive ? "available" : "over limit")
@@ -235,10 +190,10 @@ struct DashboardView: View {
                     .tint(positive ? (progress > 0.8 ? .orange : .green) : .red)
 
                 HStack {
-                    Text(weeklyDiscretionarySpent.formatted(currency: settings.currencyCode) + " spent")
+                    Text(calc.weeklyDiscretionarySpent.formatted(currency: settings.currencyCode) + " spent")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Text("of " + weeklyAllowance.formatted(currency: settings.currencyCode) + " limit")
+                    Text("of " + calc.weeklyAllowance.formatted(currency: settings.currencyCode) + " limit")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -253,10 +208,192 @@ struct DashboardView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: - Weekly budget breakdown card
+
+    private var weeklyBudgetBreakdownCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            headerRow
+
+            VStack(alignment: .leading, spacing: 14) {
+                allocationSection
+
+                Divider()
+                    .overlay(Color(.separator).opacity(0.6))
+
+                discretionarySection
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.secondarySystemGroupedBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color(.separator).opacity(0.25), lineWidth: 0.5)
+        )
+    }
+
+    private var headerRow: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text("Weekly Budget")
+                .font(.headline)
+                .foregroundStyle(.primary)
+
+            Spacer()
+
+            Text(calc.weeklyEnvelope.formatted(currency: settings.currencyCode))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+
+            Text("total")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var allocationSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Allocation")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+
+            // Stacked bar (single row) — more native-looking
+            Chart {
+                BarMark(
+                    x: .value("Amount", calc.weeklyCommitted),
+                    y: .value("Type", "Budget")
+                )
+                .foregroundStyle(.orange)
+
+                BarMark(
+                    x: .value("Amount", calc.weeklyGoals),
+                    y: .value("Type", "Budget")
+                )
+                .foregroundStyle(.purple)
+
+                BarMark(
+                    x: .value("Amount", calc.weeklyAllowance),
+                    y: .value("Type", "Budget")
+                )
+                .foregroundStyle(.green)
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .chartLegend(.hidden)
+            .chartPlotStyle { plotArea in
+                plotArea
+                    .background(Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            .frame(height: 18)
+
+            legendGrid(items: [
+                (.orange, "Bills", calc.weeklyCommitted),
+                (.purple, "Goals", calc.weeklyGoals),
+                (.green,  "Free",  calc.weeklyAllowance)
+            ])
+        }
+    }
+
+    private var discretionarySection: some View {
+        let spent = calc.weeklyDiscretionarySpent
+        let available = max(0, calc.weeklyAvailable)
+
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Discretionary")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+
+                Spacer()
+
+                Text(spent.formatted(currency: settings.currencyCode))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text("of \(calc.weeklyAllowance.formatted(currency: settings.currencyCode))")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Chart {
+                if spent > 0 {
+                    BarMark(
+                        x: .value("Amount", spent),
+                        y: .value("Type", "Discretionary")
+                    )
+                    .foregroundStyle(.red)
+                }
+
+                if available > 0 {
+                    BarMark(
+                        x: .value("Amount", available),
+                        y: .value("Type", "Discretionary")
+                    )
+                    .foregroundStyle(.green.opacity(0.65))
+                }
+            }
+            .chartXAxis(.hidden)
+            .chartYAxis(.hidden)
+            .chartLegend(.hidden)
+            .chartPlotStyle { plotArea in
+                plotArea
+                    .background(Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            }
+            .frame(height: 18)
+
+            legendGrid(items: [
+                (.red, "Spent", spent),
+                (.green.opacity(0.65), "Left", available)
+            ])
+        }
+    }
+
+    // MARK: - Legend (wraps nicely)
+
+    private func legendGrid(items: [(Color, String, Double)]) -> some View {
+        // Flow-like wrapping using adaptive grid
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), alignment: .leading)], spacing: 8) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                legendItem(color: item.0, label: item.1, amount: item.2)
+            }
+        }
+    }
+
+    private func legendItem(color: Color, label: String, amount: Double) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 6)
+
+            Text(amount.formatted(currency: settings.currencyCode))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(.tertiarySystemGroupedBackground))
+        )
+    }
+
+
     // MARK: - Goals at risk card
 
     private var goalsAtRiskCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let goalsAtRisk = calc.goalsAtRisk()
+        
+        return VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Label("Goals to Watch", systemImage: "exclamationmark.circle.fill")
                     .font(.headline)
@@ -267,8 +404,8 @@ struct DashboardView: View {
             }
 
             ForEach(goalsAtRisk) { goal in
-                let spent = spentAmount(for: goal)
-                let ratio = spentRatio(for: goal)
+                let spent = calc.spentAmount(for: goal)
+                let ratio = calc.spentRatio(for: goal)
 
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
@@ -359,21 +496,6 @@ struct DashboardView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Goal helpers
-
-    private func spentAmount(for goal: Goal) -> Double {
-        allTransactions.filter { t in
-            t.type == .expense &&
-            t.categoryName == goal.categoryName &&
-            t.date >= goal.period.currentStart &&
-            t.date <= goal.period.currentEnd
-        }.reduce(0) { $0 + $1.amount }
-    }
-
-    private func spentRatio(for goal: Goal) -> Double {
-        guard goal.spendingLimit > 0 else { return 0 }
-        return spentAmount(for: goal) / goal.spendingLimit
-    }
 }
 
 #Preview {

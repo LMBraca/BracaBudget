@@ -8,6 +8,18 @@ import Observation
 import WidgetKit
 #endif
 
+enum WeekStart: String, Codable, CaseIterable {
+    case sunday = "Sunday"
+    case monday = "Monday"
+    
+    var calendarWeekday: Int {
+        switch self {
+        case .sunday: return 1
+        case .monday: return 2
+        }
+    }
+}
+
 /// Single source of truth for user preferences.
 /// Uses stored properties (required for @Observable to detect changes)
 /// with didSet to persist each value to UserDefaults.
@@ -26,11 +38,19 @@ final class AppSettings {
         budgetCurrencyCode      = UserDefaults.standard.string(forKey: Keys.budgetCurrencyCode) ?? ""
         hasCompletedOnboarding  = UserDefaults.standard.bool(forKey: Keys.hasCompletedOnboarding)
         hasSeededCategories     = UserDefaults.standard.bool(forKey: Keys.hasSeededCategories)
+        if let raw = UserDefaults.standard.string(forKey: Keys.weekStart),
+           let ws  = WeekStart(rawValue: raw) {
+            weekStart = ws
+        } else {
+            weekStart = .sunday
+        }
         monthlyEnvelope         = UserDefaults.standard.double(forKey: Keys.monthlyEnvelope)
         cachedExchangeRate      = UserDefaults.standard.double(forKey: Keys.cachedExchangeRate)
         cachedRateFrom          = UserDefaults.standard.string(forKey: Keys.cachedRateFrom) ?? ""
         cachedRateTo            = UserDefaults.standard.string(forKey: Keys.cachedRateTo) ?? ""
         cachedRatePublishedDate = UserDefaults.standard.string(forKey: Keys.cachedRatePublishedDate) ?? ""
+        let savedStartDay       = UserDefaults.standard.integer(forKey: Keys.customMonthStartDay)
+        customMonthStartDay     = (savedStartDay > 0) ? savedStartDay : 1
     }
 
     // MARK: - Stored properties (all tracked by @Observable via stored var)
@@ -55,6 +75,14 @@ final class AppSettings {
 
     var hasSeededCategories: Bool = false {
         didSet { UserDefaults.standard.set(hasSeededCategories, forKey: Keys.hasSeededCategories) }
+    }
+    
+    /// User preference for which day the week starts on (affects weekly ranges/calculations).
+    var weekStart: WeekStart = .sunday {
+        didSet {
+            UserDefaults.standard.set(weekStart.rawValue, forKey: Keys.weekStart)
+            sharedDefaults.set(weekStart.rawValue, forKey: Keys.weekStart)
+        }
     }
 
     /// Total monthly spending envelope stored in budgetCurrencyCode (0 = not set).
@@ -92,6 +120,16 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(cachedRatePublishedDate, forKey: Keys.cachedRatePublishedDate) }
     }
 
+    /// Custom month start day (1-28). Default is 1 for calendar month.
+    /// Example: 19 means months run from the 19th of one month to the 18th of the next.
+    var customMonthStartDay: Int = 1 {
+        didSet {
+            UserDefaults.standard.set(customMonthStartDay, forKey: Keys.customMonthStartDay)
+            sharedDefaults.set(customMonthStartDay, forKey: Keys.customMonthStartDay)
+            reloadWidgets()
+        }
+    }
+
     // MARK: - Convenience
 
     /// The effective budget currency — falls back to spending currency if not set.
@@ -119,10 +157,12 @@ final class AppSettings {
         static let budgetCurrencyCode      = "budgetCurrencyCode"
         static let hasCompletedOnboarding  = "hasCompletedOnboarding"
         static let hasSeededCategories     = "hasSeededCategories"
+        static let weekStart               = "weekStart"
         static let monthlyEnvelope         = "monthlyEnvelope"
         static let cachedExchangeRate      = "cachedExchangeRate"
         static let cachedRateFrom          = "cachedRateFrom"
         static let cachedRateTo            = "cachedRateTo"
         static let cachedRatePublishedDate = "cachedRatePublishedDate"
+        static let customMonthStartDay     = "customMonthStartDay"
     }
 }
