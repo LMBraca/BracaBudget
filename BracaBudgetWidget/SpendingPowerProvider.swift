@@ -43,9 +43,8 @@ struct SpendingPowerProvider: TimelineProvider {
     // MARK: - Data Fetching
     
     private func fetchCurrentData() -> SpendingPowerEntry {
-        // Get shared model container
         guard let container = try? ModelContainer(
-            for: Transaction.self, Category.self, Goal.self, RecurringBill.self,
+            for: Transaction.self, Category.self, Goal.self, RecurringBill.self, MonthlySavingsSnapshot.self,
             configurations: ModelConfiguration(url: FileManager.sharedDatabaseURL)
         ) else {
             print("[Widget] Failed to create ModelContainer")

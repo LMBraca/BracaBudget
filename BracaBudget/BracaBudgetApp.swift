@@ -20,10 +20,14 @@ struct BracaBudgetApp: App {
         do {
             // Use shared container so widgets can access the same data
             let configuration = ModelConfiguration(
-                url: FileManager.sharedDatabaseURL
+                url: FileManager.sharedDatabaseURL,
+                cloudKitDatabase: .none
             )
             container = try ModelContainer(for: schema, configurations: [configuration])
         } catch {
+            // Log the error for debugging but don't crash in production
+            print("SwiftData initialization error: \(error)")
+            print("Database location: \(FileManager.sharedDatabaseURL)")
             fatalError("SwiftData failed to initialise: \(error)")
         }
     }

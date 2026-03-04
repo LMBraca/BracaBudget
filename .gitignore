@@ -73,3 +73,5 @@ secrets.plist
 # IDEs
 .idea/
 .vscode/
+
+.claude
