@@ -16,13 +16,16 @@ struct AddGoalView: View {
 
     var existing: Goal?           = nil
     var defaultPeriod: GoalPeriod = .monthly
+    var defaultKind: GoalKind     = .flexible
 
     // MARK: - Form state
 
-    @State private var selectedCategoryName = ""
-    @State private var limitText            = ""
-    @State private var period: GoalPeriod   = .monthly
-    @State private var notes                = ""
+    @State private var kind                 : GoalKind     = .flexible
+    @State private var name                 : String       = ""
+    @State private var selectedCategoryName : String       = ""
+    @State private var limitText            : String       = ""
+    @State private var period               : GoalPeriod   = .monthly
+    @State private var notes                : String       = ""
     @State private var showValidation       = false
     @State private var validationMessage    = ""
 
@@ -32,12 +35,20 @@ struct AddGoalView: View {
         categories.filter { $0.isExpense }
     }
 
-    /// Categories that already have a goal for the selected period
-    /// (excluding the one being edited).
+    /// Periods offered for the current kind. Flexible goals are weekly or
+    /// monthly only; fixed goals additionally allow yearly.
+    private var availablePeriods: [GoalPeriod] {
+        kind == .fixed ? [.weekly, .monthly, .yearly] : [.weekly, .monthly]
+    }
+
+    /// Categories already used by a flexible goal (we let the user create
+    /// multiple fixed goals per category — e.g. several subscriptions —
+    /// but only one flexible cap per category).
     private var alreadyUsedNames: Set<String> {
-        Set(
+        guard kind == .flexible else { return [] }
+        return Set(
             existingGoals
-                .filter { $0.period == period && $0.id != existing?.id }
+                .filter { $0.kind == .flexible && $0.id != existing?.id }
                 .map { $0.categoryName }
         )
     }
@@ -47,16 +58,16 @@ struct AddGoalView: View {
     var body: some View {
         NavigationStack {
             Form {
+                kindSection
+                if kind == .fixed {
+                    nameSection
+                }
                 periodSection
                 categorySection
                 limitSection
-                if !notes.isEmpty || isEditing {
-                    notesSection
-                } else {
-                    notesSection
-                }
+                notesSection
             }
-            .navigationTitle(isEditing ? "Edit Goal" : "New Goal")
+            .navigationTitle(isEditing ? "Edit \(kind.displayName)" : "New \(kind.displayName)")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -68,6 +79,13 @@ struct AddGoalView: View {
                 }
             }
             .onAppear(perform: populateIfEditing)
+            .onChange(of: kind) { _, newKind in
+                // Yearly is only valid for fixed goals — snap back to monthly
+                // if user switches kind to flexible while yearly is selected.
+                if newKind == .flexible && period == .yearly {
+                    period = .monthly
+                }
+            }
             .alert("Invalid Input", isPresented: $showValidation) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -78,10 +96,28 @@ struct AddGoalView: View {
 
     // MARK: - Sections
 
+    private var kindSection: some View {
+        Section {
+            Picker("Type", selection: $kind) {
+                Text("Spending Limit").tag(GoalKind.flexible)
+                Text("Recurring Cost").tag(GoalKind.fixed)
+            }
+            .pickerStyle(.segmented)
+        } footer: {
+            Text(kind.shortDescription)
+        }
+    }
+
+    private var nameSection: some View {
+        Section("Name") {
+            TextField("e.g. Netflix, Rent", text: $name)
+        }
+    }
+
     private var periodSection: some View {
         Section("Resets every") {
             Picker("Period", selection: $period) {
-                ForEach(GoalPeriod.allCases, id: \.self) { p in
+                ForEach(availablePeriods, id: \.self) { p in
                     Text(p.rawValue).tag(p)
                 }
             }
@@ -103,7 +139,7 @@ struct AddGoalView: View {
                                 .foregroundStyle(Color(hex: cat.colorHex))
                             Text(cat.name)
                             if alreadyUsedNames.contains(cat.name) {
-                                Text("· has goal").font(.caption).foregroundStyle(.secondary)
+                                Text("· has cap").font(.caption).foregroundStyle(.secondary)
                             }
                         }
                         .tag(cat.name)
@@ -125,19 +161,28 @@ struct AddGoalView: View {
             // Live breakdown hint
             if let limit = Double(limitText), limit > 0 {
                 let cal = Calendar.current
-                if period == .monthly {
+                switch period {
+                case .monthly:
                     let days = cal.range(of: .day, in: .month, for: .now)?.count ?? 30
                     Text("≈ \((limit / Double(days)).formatted(currency: settings.currencyCode)) per day")
                         .font(.caption).foregroundStyle(.secondary)
-                } else {
+                case .weekly:
                     Text("≈ \((limit / 7).formatted(currency: settings.currencyCode)) per day")
+                        .font(.caption).foregroundStyle(.secondary)
+                case .yearly:
+                    Text("≈ \((limit / 12).formatted(currency: settings.currencyCode)) per month")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
         } header: {
-            Text("Spending ceiling")
+            Text(kind == .fixed ? "Amount per period" : "Spending ceiling")
         } footer: {
-            Text("You'll be alerted on the Dashboard when you approach this limit.")
+            switch kind {
+            case .flexible:
+                Text("You'll see a warning on the Dashboard as you approach this limit.")
+            case .fixed:
+                Text("Reserved from your monthly budget up-front, whether you've logged the payment yet or not.")
+            }
         }
     }
 
@@ -153,8 +198,11 @@ struct AddGoalView: View {
     private func populateIfEditing() {
         guard let g = existing else {
             period = defaultPeriod
+            kind   = defaultKind
             return
         }
+        kind                 = g.kind
+        name                 = g.name
         selectedCategoryName = g.categoryName
         limitText            = String(format: "%.2f", g.spendingLimit)
         period               = g.period
@@ -162,25 +210,41 @@ struct AddGoalView: View {
     }
 
     private func save() {
-        let trimmedName = selectedCategoryName.trimmingCharacters(in: .whitespaces)
-        guard !trimmedName.isEmpty else {
+        let trimmedCategory = selectedCategoryName.trimmingCharacters(in: .whitespaces)
+        let trimmedName     = name.trimmingCharacters(in: .whitespaces)
+
+        guard !trimmedCategory.isEmpty else {
             validationMessage = "Please select a category."
             showValidation    = true
             return
         }
         guard let limit = Double(limitText), limit > 0 else {
-            validationMessage = "Please enter a spending limit greater than zero."
+            validationMessage = "Please enter an amount greater than zero."
+            showValidation    = true
+            return
+        }
+        if kind == .fixed && trimmedName.isEmpty {
+            validationMessage = "Please give this bill a name (e.g. Netflix)."
             showValidation    = true
             return
         }
 
         if let g = existing {
-            g.categoryName   = trimmedName
+            g.kind           = kind
+            g.name           = trimmedName
+            g.categoryName   = trimmedCategory
             g.spendingLimit  = limit
             g.period         = period
             g.notes          = notes
         } else {
-            let g = Goal(categoryName: trimmedName, spendingLimit: limit, period: period, notes: notes)
+            let g = Goal(
+                name:          trimmedName,
+                categoryName:  trimmedCategory,
+                spendingLimit: limit,
+                period:        period,
+                kind:          kind,
+                notes:         notes
+            )
             modelContext.insert(g)
         }
 

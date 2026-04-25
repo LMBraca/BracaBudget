@@ -25,9 +25,10 @@ struct BracaBudgetApp: App {
             )
             container = try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            // Log the error for debugging but don't crash in production
+            #if DEBUG
             print("SwiftData initialization error: \(error)")
             print("Database location: \(FileManager.sharedDatabaseURL)")
+            #endif
             fatalError("SwiftData failed to initialise: \(error)")
         }
     }
@@ -59,6 +60,7 @@ private struct RootView: View {
                     .environment(converter)
                     .onAppear {
                         seedDefaultCategoriesIfNeeded(context: modelContext)
+                        migrateRecurringBillsToGoalsIfNeeded(context: modelContext)
                     }
                     // Refresh rate whenever the app becomes active and currencies differ.
                     .task(id: converterTaskID) {

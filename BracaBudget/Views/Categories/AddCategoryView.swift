@@ -10,6 +10,9 @@ struct AddCategoryView: View {
 
     var existing: Category? = nil
     var isExpense: Bool = true   // used only when creating new
+    /// Called after a brand-new category is saved (not on edit).
+    /// Lets the presenting view auto-select it without polling the @Query.
+    var onCreated: ((Category) -> Void)? = nil
 
     @Query(sort: \Category.sortOrder) private var allCategories: [Category]
 
@@ -125,6 +128,8 @@ struct AddCategoryView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(Self.iconAccessibilityName(sf))
+                    .accessibilityAddTraits(icon == sf ? [.isSelected] : [])
                 }
             }
             .padding(.vertical, 6)
@@ -137,7 +142,7 @@ struct AddCategoryView: View {
                 columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 8),
                 spacing: 10
             ) {
-                ForEach(colorOptions, id: \.self) { hex in
+                ForEach(Array(colorOptions.enumerated()), id: \.element) { index, hex in
                     Button {
                         colorHex = hex
                     } label: {
@@ -153,10 +158,18 @@ struct AddCategoryView: View {
                         }
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Color \(index + 1) of \(colorOptions.count)")
+                    .accessibilityAddTraits(colorHex == hex ? [.isSelected] : [])
                 }
             }
             .padding(.vertical, 6)
         }
+    }
+
+    private static func iconAccessibilityName(_ sfSymbol: String) -> String {
+        sfSymbol
+            .replacingOccurrences(of: ".fill", with: "")
+            .replacingOccurrences(of: ".", with: " ")
     }
 
     // MARK: - Logic
@@ -182,6 +195,7 @@ struct AddCategoryView: View {
             cat.name     = trimmed
             cat.icon     = icon
             cat.colorHex = colorHex
+            try? modelContext.save()
         } else {
             let cat = Category(
                 name:      trimmed,
@@ -190,8 +204,9 @@ struct AddCategoryView: View {
                 isExpense: isExpense
             )
             modelContext.insert(cat)
+            try? modelContext.save()
+            onCreated?(cat)
         }
-        try? modelContext.save()
         dismiss()
     }
 }

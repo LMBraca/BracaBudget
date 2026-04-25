@@ -206,8 +206,7 @@ struct CategoryPickerSheet: View {
     @Environment(\.modelContext) private var modelContext
     @State private var searchText = ""
     @State private var showAddCategory = false
-    @State private var existingCategoryIDs: Set<UUID> = []
-    
+
     // Determine if we're picking expense or income category based on existing categories
     private var isExpense: Bool {
         categories.first?.isExpense ?? true
@@ -224,8 +223,6 @@ struct CategoryPickerSheet: View {
                 // Add New Category Button
                 Section {
                     Button {
-                        // Store existing category IDs before opening the sheet
-                        existingCategoryIDs = Set(categories.map { $0.id })
                         showAddCategory = true
                     } label: {
                         HStack(spacing: 14) {
@@ -280,15 +277,10 @@ struct CategoryPickerSheet: View {
                 }
             }
             .sheet(isPresented: $showAddCategory) {
-                AddCategoryView(isExpense: isExpense)
-                    .onDisappear {
-                        // Auto-select the newly created category
-                        // Find the category that wasn't in the original set
-                        if let newCategory = categories.first(where: { !existingCategoryIDs.contains($0.id) }) {
-                            selected = newCategory
-                            dismiss()
-                        }
-                    }
+                AddCategoryView(isExpense: isExpense) { newCategory in
+                    selected = newCategory
+                    dismiss()
+                }
             }
         }
     }

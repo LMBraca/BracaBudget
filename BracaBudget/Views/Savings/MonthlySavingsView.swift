@@ -119,14 +119,15 @@ struct MonthlySavingsView: View {
             
             // Show exchange rate info if dual currency
             if needsConversion {
-                HStack {
+                HStack(alignment: .top, spacing: 6) {
                     Image(systemName: "info.circle")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("Historical months use exchange rates from when they ended")
+                    Text("Each past month locks in the exchange rate that was live the first time you opened this screen during that month. Months you back-fill (e.g. via CSV import) snapshot today's rate instead.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Spacer()
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 0)
                 }
             }
         }

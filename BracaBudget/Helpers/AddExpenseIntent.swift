@@ -41,12 +41,14 @@ struct AddExpenseIntent: AppIntent {
         }
         let databaseURL = containerURL.appendingPathComponent("BracaBudget.sqlite")
         
-        // Get shared model context
+        // IMPORTANT: must include the FULL schema (matching the main app),
+        // otherwise SwiftData will treat the missing entities as a destructive
+        // migration and wipe other data (transactions, goals, bills, etc.).
         let container = try ModelContainer(
-            for: Transaction.self, Category.self,
+            for: Transaction.self, Category.self, Goal.self, RecurringBill.self, MonthlySavingsSnapshot.self,
             configurations: ModelConfiguration(url: databaseURL)
         )
-        
+
         let context = ModelContext(container)
         
         // Get category details from selected entity
@@ -121,7 +123,7 @@ struct CategoryQuery: EntityQuery {
         let databaseURL = containerURL.appendingPathComponent("BracaBudget.sqlite")
         
         let container = try ModelContainer(
-            for: Category.self,
+            for: Transaction.self, Category.self, Goal.self, RecurringBill.self, MonthlySavingsSnapshot.self,
             configurations: ModelConfiguration(url: databaseURL)
         )
         let context = ModelContext(container)
@@ -145,7 +147,7 @@ struct CategoryQuery: EntityQuery {
         let databaseURL = containerURL.appendingPathComponent("BracaBudget.sqlite")
         
         let container = try ModelContainer(
-            for: Category.self,
+            for: Transaction.self, Category.self, Goal.self, RecurringBill.self, MonthlySavingsSnapshot.self,
             configurations: ModelConfiguration(url: databaseURL)
         )
         let context = ModelContext(container)

@@ -98,7 +98,25 @@ struct ManageCategoriesView: View {
             .sheet(item: $editingCategory) { category in
                 AddCategoryView(existing: category, isExpense: category.isExpense)
             }
-            
+            .confirmationDialog(
+                "Delete Category?",
+                isPresented: $showDeleteConfirm,
+                titleVisibility: .visible,
+                presenting: categoryToDelete
+            ) { category in
+                Button("Delete \(category.name)", role: .destructive) {
+                    deleteCategory(category)
+                }
+                Button("Cancel", role: .cancel) {
+                    categoryToDelete = nil
+                }
+            } message: { category in
+                if category.isDefault {
+                    Text("\(category.name) is a default category. Existing transactions will keep their category, but it will no longer appear in pickers.")
+                } else {
+                    Text("Existing transactions tagged with \(category.name) will keep their category, but it will no longer appear in pickers.")
+                }
+            }
         }
     }
     

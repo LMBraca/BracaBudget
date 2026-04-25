@@ -76,21 +76,20 @@ struct SpendingPowerProvider: TimelineProvider {
         
         // Calculate envelope in spending currency
         let envelopeInSpendingCurrency = monthlyEnvelope * conversionRate
-        
-        // Fetch active recurring bills
-        let billDescriptor = FetchDescriptor<RecurringBill>(
-            predicate: #Predicate { $0.isActive }
-        )
-        let activeBills = (try? context.fetch(billDescriptor)) ?? []
-        let committedMonthly = activeBills.reduce(0.0) { $0 + $1.monthlyEquivalent }
-        
-        // Fetch monthly goals
+
+        // Fetch all goals — fixed goals are committed costs (formerly bills),
+        // flexible goals are spending caps.
         let goalDescriptor = FetchDescriptor<Goal>()
         let allGoals = (try? context.fetch(goalDescriptor)) ?? []
+
+        let committedMonthly = allGoals
+            .filter { $0.kind == .fixed }
+            .reduce(0.0) { $0 + $1.monthlyEquivalent }
+
         let allocatedMonthly = allGoals
-            .filter { $0.period == GoalPeriod.monthly }
-            .reduce(0.0) { $0 + $1.spendingLimit }
-        
+            .filter { $0.kind == .flexible }
+            .reduce(0.0) { $0 + $1.monthlyEquivalent }
+
         // Calculate discretionary pool
         let discretionaryPool = max(0, envelopeInSpendingCurrency - committedMonthly - allocatedMonthly)
         

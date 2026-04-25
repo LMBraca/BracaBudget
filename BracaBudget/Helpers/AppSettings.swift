@@ -51,6 +51,15 @@ final class AppSettings {
         cachedRatePublishedDate = UserDefaults.standard.string(forKey: Keys.cachedRatePublishedDate) ?? ""
         let savedStartDay       = UserDefaults.standard.integer(forKey: Keys.customMonthStartDay)
         customMonthStartDay     = (savedStartDay > 0) ? savedStartDay : 1
+        hasMigratedBillsToGoals = UserDefaults.standard.bool(forKey: Keys.hasMigratedBillsToGoals)
+
+        // Mirror prefs that date helpers (and the widget) read from the App
+        // Group container. didSet doesn't fire during init, so upgraded users
+        // might have these in standard defaults but never synced to shared.
+        sharedDefaults.set(weekStart.rawValue,      forKey: Keys.weekStart)
+        sharedDefaults.set(customMonthStartDay,     forKey: Keys.customMonthStartDay)
+        sharedDefaults.set(currencyCode,            forKey: Keys.currencyCode)
+        sharedDefaults.set(monthlyEnvelope,         forKey: Keys.monthlyEnvelope)
     }
 
     // MARK: - Stored properties (all tracked by @Observable via stored var)
@@ -120,6 +129,12 @@ final class AppSettings {
         didSet { UserDefaults.standard.set(cachedRatePublishedDate, forKey: Keys.cachedRatePublishedDate) }
     }
 
+    /// One-time flag: have we migrated legacy `RecurringBill` records into
+    /// fixed `Goal` records yet? Set true after the migration runs.
+    var hasMigratedBillsToGoals: Bool = false {
+        didSet { UserDefaults.standard.set(hasMigratedBillsToGoals, forKey: Keys.hasMigratedBillsToGoals) }
+    }
+
     /// Custom month start day (1-28). Default is 1 for calendar month.
     /// Example: 19 means months run from the 19th of one month to the 18th of the next.
     var customMonthStartDay: Int = 1 {
@@ -164,5 +179,6 @@ final class AppSettings {
         static let cachedRateTo            = "cachedRateTo"
         static let cachedRatePublishedDate = "cachedRatePublishedDate"
         static let customMonthStartDay     = "customMonthStartDay"
+        static let hasMigratedBillsToGoals = "hasMigratedBillsToGoals"
     }
 }

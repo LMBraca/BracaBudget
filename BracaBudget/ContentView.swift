@@ -18,7 +18,7 @@ struct ContentView: View {
             Tab("Budget", systemImage: "dollarsign.circle.fill", value: AppTab.budgets) {
                 BudgetView()
             }
-            Tab("Goals", systemImage: "target", value: AppTab.goals) {
+            Tab("Plans", systemImage: "target", value: AppTab.goals) {
                 GoalListView()
             }
             Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {

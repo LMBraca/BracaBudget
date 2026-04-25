@@ -25,6 +25,7 @@ struct SettingsView: View {
                     exchangeRateSection
                 }
                 categoriesSection
+                dataSection
                 #if DEBUG
                 testModeSection
                 #endif
@@ -37,7 +38,7 @@ struct SettingsView: View {
             .sheet(isPresented: $showSpendingCurrencyPicker) {
                 CurrencyPickerSheet(
                     title: "Spending Currency",
-                    footer: "The currency you pay in day-to-day (transactions, goals, and bills are entered in this currency).",
+                    footer: "The currency you pay in day-to-day (transactions and plans are entered in this currency).",
                     currentCode: settings.currencyCode
                 ) { code in
                     settings.currencyCode = code
@@ -54,17 +55,6 @@ struct SettingsView: View {
                     settings.budgetCurrencyCode = (code == settings.currencyCode) ? "" : code
                 }
             }
-            .confirmationDialog(
-                "Delete all data?",
-                isPresented: $showDeleteConfirm,
-                titleVisibility: .visible
-            ) {
-                Button("Delete Everything", role: .destructive, action: deleteAllData)
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This will permanently remove all transactions, goals, bills, and categories. This cannot be undone.")
-            }
-            
         }
     }
 
@@ -271,12 +261,12 @@ struct SettingsView: View {
                 Button("Delete Everything", role: .destructive, action: deleteAllData)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will permanently remove all transactions, goals, bills, and categories. This cannot be undone.")
+                Text("This will permanently remove all transactions, plans, and categories. This cannot be undone.")
             }
         } header: {
             Text("Danger Zone")
         } footer: {
-            Text("Irreversible. All transactions, goals, recurring bills, and custom categories will be removed.")
+            Text("Irreversible. All transactions, plans, and custom categories will be removed.")
         }
     }
 
@@ -342,6 +332,20 @@ struct SettingsView: View {
         }
     }
     
+    // MARK: - Data (Import / Export)
+    
+    private var dataSection: some View {
+        Section {
+            NavigationLink(destination: CSVImportExportView()) {
+                Label("Import / Export CSV", systemImage: "tablecells")
+            }
+        } header: {
+            Text("Data")
+        } footer: {
+            Text("Import or export your transactions and plans as CSV files.")
+        }
+    }
+    
     // MARK: - Test Mode (DEBUG only)
     
     #if DEBUG
@@ -376,8 +380,10 @@ struct SettingsView: View {
     
     private var shortcutsSection: some View {
         Section {
-            Link(destination: URL(string: "https://www.icloud.com/shortcuts/a02dab74110646209d9a199ddfc5e57f")!) {
-                Label("Create expense shortcut", systemImage: "bolt.fill")
+            if let url = URL(string: "https://www.icloud.com/shortcuts/a02dab74110646209d9a199ddfc5e57f") {
+                Link(destination: url) {
+                    Label("Create expense shortcut", systemImage: "bolt.fill")
+                }
             }
         } header: {
             Text("Shortcuts")

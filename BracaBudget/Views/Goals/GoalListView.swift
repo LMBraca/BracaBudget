@@ -4,6 +4,11 @@
 import SwiftUI
 import SwiftData
 
+private enum GoalFilter: String, CaseIterable, Hashable {
+    case flexible = "Spending Limits"
+    case fixed    = "Recurring Costs"
+}
+
 struct GoalListView: View {
     @Environment(\.modelContext)   private var modelContext
     @Environment(AppSettings.self) private var settings
@@ -13,14 +18,17 @@ struct GoalListView: View {
     @Query(sort: \Transaction.date, order: .reverse)
     private var allTransactions: [Transaction]
 
-    @State private var selectedPeriod: GoalPeriod = .monthly
+    @State private var filter: GoalFilter = .flexible
     @State private var showAddGoal = false
     @State private var editingGoal: Goal? = nil
 
-    // MARK: - Filtered goals
+    // MARK: - Filtered
 
     private var filteredGoals: [Goal] {
-        goals.filter { $0.period == selectedPeriod }
+        switch filter {
+        case .flexible: goals.filter { $0.kind == .flexible }
+        case .fixed:    goals.filter { $0.kind == .fixed }
+        }
     }
 
     // MARK: - Body
@@ -28,13 +36,28 @@ struct GoalListView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Period", selection: $selectedPeriod) {
-                    ForEach(GoalPeriod.allCases, id: \.self) { p in
-                        Text(p.rawValue).tag(p)
+                VStack(spacing: 8) {
+                    HStack(alignment: .top, spacing: 6) {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("Plans subtract from the Budget tab's free-to-spend amount. Recurring costs reserve a fixed sum each period; spending limits cap variable categories.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 0)
                     }
+                    .padding(.horizontal)
+
+                    Picker("Type", selection: $filter) {
+                        ForEach(GoalFilter.allCases, id: \.self) { f in
+                            Text(f.rawValue).tag(f)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
                 }
-                .pickerStyle(.segmented)
-                .padding()
+                .padding(.vertical, 12)
                 .background(Color(.systemGroupedBackground))
 
                 if filteredGoals.isEmpty {
@@ -44,7 +67,7 @@ struct GoalListView: View {
                 }
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Goals")
+            .navigationTitle("Plans")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -54,7 +77,10 @@ struct GoalListView: View {
                 }
             }
             .sheet(isPresented: $showAddGoal) {
-                AddGoalView(defaultPeriod: selectedPeriod)
+                AddGoalView(
+                    defaultPeriod: .monthly,
+                    defaultKind:   filter == .fixed ? .fixed : .flexible
+                )
             }
             .sheet(item: $editingGoal) { goal in
                 AddGoalView(existing: goal)
@@ -77,16 +103,12 @@ struct GoalListView: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        delete(goal)
-                    } label: {
+                    Button(role: .destructive) { delete(goal) } label: {
                         Label("Delete", systemImage: "trash")
                     }
                 }
                 .swipeActions(edge: .leading) {
-                    Button {
-                        editingGoal = goal
-                    } label: {
+                    Button { editingGoal = goal } label: {
                         Label("Edit", systemImage: "pencil")
                     }
                     .tint(.blue)
@@ -103,12 +125,19 @@ struct GoalListView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("No \(selectedPeriod.rawValue) Goals", systemImage: "target")
+            Label(
+                filter == .fixed ? "No Recurring Costs" : "No Spending Limits",
+                systemImage: filter == .fixed ? "lock.fill" : "target"
+            )
         } description: {
-            Text("Tap + to set a spending ceiling for a category.")
+            Text(filter == .fixed
+                 ? "Track costs that repeat every period — rent, subscriptions, utilities — so they don't eat into your weekly spending."
+                 : "Set a ceiling on variable spending like groceries or dining out, and we'll warn you when you're close.")
         } actions: {
-            Button("Add Goal") { showAddGoal = true }
-                .buttonStyle(.borderedProminent)
+            Button(filter == .fixed ? "Add a Recurring Cost" : "Add a Limit") {
+                showAddGoal = true
+            }
+            .buttonStyle(.borderedProminent)
         }
     }
 
@@ -157,6 +186,7 @@ private struct GoalCard: View {
     }
 
     private var isOver: Bool { spent > limit }
+    private var isFixed: Bool { goal.kind == .fixed }
 
     private var statusColor: Color {
         if isOver              { return .red }
@@ -169,11 +199,23 @@ private struct GoalCard: View {
             // Header
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(goal.categoryName)
-                        .font(.subheadline.weight(.semibold))
-                    Text(goal.period.rawValue)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        if isFixed {
+                            Image(systemName: "lock.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        Text(goal.displayName)
+                            .font(.subheadline.weight(.semibold))
+                    }
+                    HStack(spacing: 4) {
+                        Text(goal.period.rawValue)
+                        if goal.displayName != goal.categoryName {
+                            Text("· \(goal.categoryName)")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 3) {
@@ -197,7 +239,7 @@ private struct GoalCard: View {
                     Text(String(format: "%.0f%%", ratio * 100) + " used")
                         .font(.caption2).foregroundStyle(.secondary)
                     Spacer()
-                    Text(limit.formatted(currency: currencyCode) + " limit")
+                    Text(limit.formatted(currency: currencyCode) + " " + perPeriodSuffix)
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }
@@ -244,6 +286,14 @@ private struct GoalCard: View {
         .overlay {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(isOver ? Color.red.opacity(0.4) : Color.clear, lineWidth: 1)
+        }
+    }
+
+    private var perPeriodSuffix: String {
+        switch goal.period {
+        case .weekly:  "limit / wk"
+        case .monthly: "limit / mo"
+        case .yearly:  "limit / yr"
         }
     }
 }

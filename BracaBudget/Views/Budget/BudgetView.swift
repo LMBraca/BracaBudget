@@ -1,15 +1,12 @@
 // BudgetView.swift
 // BracaBudget
 //
-// Envelope / spending-power calculator with dual-currency support.
+// Envelope / spending-power planner with dual-currency support.
 //
 // All internal math is performed in the SPENDING currency (e.g. MXN).
 // The monthly envelope is stored in the BUDGET currency (e.g. USD) and
 // converted to spending currency using the live exchange rate before any
 // arithmetic is done.
-//
-// The toggle lets the user flip between seeing numbers in their budget
-// currency (USD) or their spending currency (MXN).
 
 import SwiftUI
 import SwiftData
@@ -20,9 +17,6 @@ struct BudgetView: View {
     @Environment(\.modelContext)      private var modelContext
     @Environment(\.appTab)            private var selectedTab
 
-    @Query(filter: #Predicate<RecurringBill> { $0.isActive }, sort: \RecurringBill.name)
-    private var activeBills: [RecurringBill]
-
     @Query(sort: \Goal.categoryName)
     private var goals: [Goal]
 
@@ -30,19 +24,16 @@ struct BudgetView: View {
     private var allTransactions: [Transaction]
 
     @State private var showSetEnvelope = false
-    @State private var showAddBill     = false
-    @State private var editingBill: RecurringBill? = nil
     /// When true, amounts are shown in the budget currency (e.g. USD).
     /// When false (default), amounts are shown in the spending currency (e.g. MXN).
     @State private var showInBudgetCurrency = false
-    
+
     // MARK: - Budget Calculations (Single Source of Truth)
-    
+
     private var calc: BudgetCalculations {
         BudgetCalculations(
             settings: settings,
             converter: converter,
-            activeBills: activeBills,
             goals: goals,
             allTransactions: allTransactions
         )
@@ -57,8 +48,8 @@ struct BudgetView: View {
     private var displayCode: String {
         (needsConversion && showInBudgetCurrency) ? budgetCode : spendingCode
     }
-    
-    /// Formats a value that is already in the SPENDING currency.
+
+    /// Formats a value already in SPENDING currency.
     private func fmt(_ valueInSpendingCurrency: Double) -> String {
         if needsConversion && showInBudgetCurrency {
             let rate = converter.rate > 0 ? converter.rate : 1
@@ -79,41 +70,25 @@ struct BudgetView: View {
 
     var body: some View {
         NavigationStack {
-            if settings.monthlyEnvelope <= 0 {
-                envelopeSetupPrompt
-                    .navigationTitle("Budget")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar { envelopeToolbar }
-            } else {
-                ScrollView {
-                    VStack(spacing: 16) {
-                        if needsConversion {
-                            rateBanner
-                        }
-                        spendingPowerCard
-                        mathBreakdownCard
-                        recurringBillsCard
-                        goalsAllocationCard
+            ScrollView {
+                VStack(spacing: 16) {
+                    if needsConversion {
+                        rateBanner
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom, 24)
+                    spendingPowerCard
+                    mathBreakdownCard
+                    plannedSpendingCard
                 }
-                .background(Color(.systemGroupedBackground))
-                .navigationTitle("Budget")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    envelopeToolbar
-                }
+                .padding(.horizontal)
+                .padding(.bottom, 24)
             }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Budget")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { envelopeToolbar }
         }
         .sheet(isPresented: $showSetEnvelope) {
             SetEnvelopeView()
-        }
-        .sheet(isPresented: $showAddBill) {
-            AddRecurringBillView()
-        }
-        .sheet(item: $editingBill) { bill in
-            AddRecurringBillView(existing: bill)
         }
     }
 
@@ -146,37 +121,21 @@ struct BudgetView: View {
     private var rateBanner: some View {
         switch converter.state {
         case .loading:
-            rateBannerView(
-                icon: "arrow.clockwise",
-                message: "Fetching exchange rate…",
-                color: .blue,
-                isStale: false
-            )
-
+            rateBannerView(icon: "arrow.clockwise",
+                           message: "Fetching exchange rate…",
+                           color: .blue, isStale: false)
         case .fresh(let date):
-            rateBannerView(
-                icon: "checkmark.circle.fill",
-                message: "\(converter.rateDescription(from: budgetCode, to: spendingCode)) · \(formattedRateDate(date))",
-                color: .green,
-                isStale: false
-            )
-
+            rateBannerView(icon: "checkmark.circle.fill",
+                           message: "\(converter.rateDescription(from: budgetCode, to: spendingCode)) · \(formattedRateDate(date))",
+                           color: .green, isStale: false)
         case .stale(let date):
-            rateBannerView(
-                icon: "exclamationmark.triangle.fill",
-                message: "Cached rate from \(date) — no connection",
-                color: .orange,
-                isStale: true
-            )
-
+            rateBannerView(icon: "exclamationmark.triangle.fill",
+                           message: "Cached rate from \(date) — no connection",
+                           color: .orange, isStale: true)
         case .unavailable:
-            rateBannerView(
-                icon: "wifi.slash",
-                message: "Exchange rate unavailable — connect to update",
-                color: .red,
-                isStale: true
-            )
-
+            rateBannerView(icon: "wifi.slash",
+                           message: "Exchange rate unavailable — connect to update",
+                           color: .red, isStale: true)
         case .idle:
             EmptyView()
         }
@@ -184,8 +143,7 @@ struct BudgetView: View {
 
     private func rateBannerView(icon: String, message: String, color: Color, isStale: Bool) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: icon)
-                .foregroundStyle(color)
+            Image(systemName: icon).foregroundStyle(color)
             Text(message)
                 .font(.caption)
                 .foregroundStyle(isStale ? .orange : .secondary)
@@ -197,29 +155,6 @@ struct BudgetView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    // MARK: - Setup prompt
-
-    private var envelopeSetupPrompt: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Image(systemName: "envelope.open.fill")
-                .font(.system(size: 60))
-                .foregroundStyle(.blue)
-            Text("Set Your Monthly Budget")
-                .font(.title2.bold())
-            Text("Enter the total amount you allow yourself to spend each month. BracaBudget will work out your weekly free-spending limit after bills and goals are accounted for.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-            Button("Set Monthly Budget") { showSetEnvelope = true }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-            Spacer()
-        }
-        .frame(maxWidth: .infinity)
-    }
-
     // MARK: - Spending power card
 
     private var spendingPowerCard: some View {
@@ -227,10 +162,8 @@ struct BudgetView: View {
         let progress = calc.weeklyAllowance > 0
             ? min(calc.weeklyDiscretionarySpent / calc.weeklyAllowance, 1.0)
             : 0.0
-        let weekRange = "\(Date.now.startOfWeek.formatted(.dateTime.month(.abbreviated).day())) – \(Date.now.endOfWeek.formatted(.dateTime.month(.abbreviated).day()))"
 
         return VStack(spacing: 16) {
-            // Currency mode indicator (only when dual-currency)
             if needsConversion {
                 HStack {
                     Spacer()
@@ -244,14 +177,13 @@ struct BudgetView: View {
                 }
             }
 
-            Text(weekRange)
+            Text(calc.weekRangeLabel)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 4) {
                 Text(positive ? "Available this week" : "Over limit by")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(.subheadline).foregroundStyle(.secondary)
                 Text(fmt(abs(calc.weeklyAvailable)))
                     .font(.system(size: 52, weight: .bold, design: .rounded))
                     .foregroundStyle(positive ? .green : .red)
@@ -301,36 +233,31 @@ struct BudgetView: View {
             // Envelope row — special handling because it's stored in budget currency
             HStack {
                 Circle().fill(Color.blue).frame(width: 8, height: 8)
-                Text("Monthly budget")
-                    .font(.subheadline)
+                Text("Monthly budget").font(.subheadline)
                 if needsConversion {
-                    Text("(\(budgetCode))")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    Text("(\(budgetCode))").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 VStack(alignment: .trailing, spacing: 1) {
                     Text(fmtEnvelope(settings.monthlyEnvelope))
                         .font(.subheadline)
                         .contentTransition(.numericText())
-                    // Show the other currency beneath if dual-currency
                     if needsConversion {
                         Text(showInBudgetCurrency
                              ? "= \((settings.monthlyEnvelope * converter.rate).formatted(currency: spendingCode))"
                              : "= \(settings.monthlyEnvelope.formatted(currency: budgetCode))")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .font(.caption2).foregroundStyle(.tertiary)
                     }
                 }
             }
 
-            mathRow("Committed bills",    value: calc.committedMonthly,  color: .orange, sign: "−")
-            mathRow("Allocated to goals", value: calc.allocatedMonthly,  color: .purple, sign: "−")
+            mathRow("Recurring costs", value: calc.committedMonthly, color: .orange, sign: "−")
+            mathRow("Spending limits", value: calc.allocatedMonthly, color: .purple, sign: "−")
 
             Divider()
 
             HStack {
-                Text("Discretionary pool")
+                Text("Free to spend")
                     .font(.subheadline.weight(.semibold))
                 Spacer()
                 Text(fmt(calc.discretionaryPool))
@@ -365,112 +292,44 @@ struct BudgetView: View {
         }
     }
 
-    // MARK: - Recurring bills card
+    // MARK: - Planned spending card (replaces old Bills + Goals cards)
 
-    private var recurringBillsCard: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
+    private var plannedSpendingCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Recurring Bills")
+                Text("Planned Spending")
                     .font(.headline)
                 Spacer()
-                Text(fmt(calc.committedMonthly) + "/mo")
-                    .font(.caption).foregroundStyle(.secondary)
-                Button { showAddBill = true } label: {
-                    Image(systemName: "plus.circle")
-                }
-            }
-            .padding(.horizontal)
-            .padding(.top)
-            .padding(.bottom, 8)
-
-            // Content
-            if activeBills.isEmpty {
-                Text("No recurring bills added. Tap + to add fixed expenses like rent or phone.")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .padding(.horizontal)
-                    .padding(.bottom)
-            } else {
-                List {
-                    ForEach(activeBills) { bill in
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Circle()
-                                    .fill(Color(hex: bill.categoryColorHex).opacity(0.15))
-                                    .frame(width: 36, height: 36)
-                                Image(systemName: bill.categoryIcon)
-                                    .foregroundStyle(Color(hex: bill.categoryColorHex))
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(bill.name).font(.subheadline)
-                                Text(bill.frequency.rawValue)
-                                    .font(.caption).foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(fmt(bill.amount))
-                                    .font(.subheadline.weight(.medium))
-                                if bill.frequency != .monthly {
-                                    Text("≈ \(fmt(bill.monthlyEquivalent))/mo")
-                                        .font(.caption2).foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) { deleteBill(bill) } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                        .swipeActions(edge: .leading) {
-                            Button { editingBill = bill } label: {
-                                Label("Edit", systemImage: "pencil")
-                            }
-                            .tint(.blue)
-                        }
-                        .onTapGesture { editingBill = bill }
-                    }
-                }
-                .frame(height: CGFloat(activeBills.count) * 60) // Approximate row height
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .scrollDisabled(true)
-            }
-        }
-        .background(Color(.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-    }
-
-    // MARK: - Goals allocation card
-
-    private var goalsAllocationCard: some View {
-        let monthlyGoals = goals.filter { $0.period == .monthly }
-
-        return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Planned Spending (Goals)")
-                    .font(.headline)
-                Spacer()
-                Text(fmt(calc.allocatedMonthly) + "/mo")
-                    .font(.caption).foregroundStyle(.secondary)
                 Button { selectedTab.wrappedValue = .goals } label: {
-                    Image(systemName: "arrow.right.circle")
+                    HStack(spacing: 4) {
+                        Text("Manage").font(.subheadline)
+                        Image(systemName: "chevron.right").font(.caption2)
+                    }
                 }
             }
 
-            if monthlyGoals.isEmpty {
-                Text("No monthly goals set. Goals you create appear here as planned spending.")
+            if goals.isEmpty {
+                Text("Nothing planned yet. Add recurring costs (rent, subscriptions) and spending limits (groceries, dining out) in the Plans tab.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                ForEach(monthlyGoals) { goal in
-                    HStack {
-                        Text(goal.categoryName).font(.subheadline)
-                        Spacer()
-                        Text(fmt(goal.spendingLimit) + " ceiling")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
+                if !calc.fixedGoals.isEmpty {
+                    plannedSection(
+                        title: "Recurring costs",
+                        total: calc.committedMonthly,
+                        color: .orange,
+                        items: calc.fixedGoals
+                    )
+                }
+                if !calc.fixedGoals.isEmpty && !calc.flexibleGoals.isEmpty {
+                    Divider()
+                }
+                if !calc.flexibleGoals.isEmpty {
+                    plannedSection(
+                        title: "Spending limits",
+                        total: calc.allocatedMonthly,
+                        color: .purple,
+                        items: calc.flexibleGoals
+                    )
                 }
             }
         }
@@ -479,12 +338,40 @@ struct BudgetView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    // MARK: - Helpers
-
-    private func deleteBill(_ bill: RecurringBill) {
-        modelContext.delete(bill)
-        try? modelContext.save()
+    @ViewBuilder
+    private func plannedSection(title: String, total: Double, color: Color, items: [Goal]) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Circle().fill(color).frame(width: 8, height: 8)
+                Text(title).font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(fmt(total) + "/mo")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            ForEach(items) { g in
+                HStack {
+                    Text(g.displayName).font(.subheadline)
+                    if g.displayName != g.categoryName {
+                        Text("· \(g.categoryName)")
+                            .font(.caption).foregroundStyle(.tertiary)
+                    }
+                    Spacer()
+                    Text(fmt(g.spendingLimit) + perPeriodSuffix(for: g))
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
     }
+
+    private func perPeriodSuffix(for goal: Goal) -> String {
+        switch goal.period {
+        case .weekly:  "/wk"
+        case .monthly: "/mo"
+        case .yearly:  "/yr"
+        }
+    }
+
+    // MARK: - Helpers
 
     /// Formats a Frankfurter date string ("2025-02-18") into a readable label.
     private func formattedRateDate(_ isoDate: String) -> String {
@@ -547,7 +434,7 @@ struct SetEnvelopeView: View {
                     if needsConversion {
                         Text("Your envelope is set in \(budgetCode) (your income currency) and converted to \(spendingCode) using today's exchange rate when calculating your weekly allowance.")
                     } else {
-                        Text("This is the total you allow yourself to spend each month. Bills and goals are subtracted to find your weekly free-spending limit.")
+                        Text("This is the total you allow yourself to spend each month. Recurring costs and spending limits are subtracted to find your weekly free-spending limit.")
                     }
                 }
             }
@@ -579,7 +466,7 @@ struct SetEnvelopeView: View {
 
 #Preview {
     BudgetView()
-        .modelContainer(for: [RecurringBill.self, Goal.self, Transaction.self, Category.self], inMemory: true)
+        .modelContainer(for: [Goal.self, Transaction.self, Category.self, RecurringBill.self, MonthlySavingsSnapshot.self], inMemory: true)
         .environment(AppSettings.shared)
         .environment(CurrencyConverter())
 }
