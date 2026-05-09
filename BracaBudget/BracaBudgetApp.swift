@@ -13,8 +13,7 @@ struct BracaBudgetApp: App {
         let schema = Schema([
             Transaction.self,
             Category.self,
-            Goal.self,
-            RecurringBill.self,
+            Allocation.self,
             MonthlySavingsSnapshot.self,
         ])
         do {
@@ -60,7 +59,6 @@ private struct RootView: View {
                     .environment(converter)
                     .onAppear {
                         seedDefaultCategoriesIfNeeded(context: modelContext)
-                        migrateRecurringBillsToGoalsIfNeeded(context: modelContext)
                     }
                     // Refresh rate whenever the app becomes active and currencies differ.
                     .task(id: converterTaskID) {

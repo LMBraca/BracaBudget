@@ -45,7 +45,7 @@ struct SpendingPowerProvider: TimelineProvider {
     private func fetchCurrentData() -> SpendingPowerEntry {
         // Get shared model container
         guard let container = try? ModelContainer(
-            for: Transaction.self, Category.self, Goal.self, RecurringBill.self,
+            for: Transaction.self, Category.self, Allocation.self,
             configurations: [
                 ModelConfiguration(url: FileManager.sharedDatabaseURL)
             ]
@@ -53,15 +53,15 @@ struct SpendingPowerProvider: TimelineProvider {
             print("[Widget] Failed to create ModelContainer")
             return SpendingPowerEntry.placeholder
         }
-        
+
         let context = ModelContext(container)
-        
+
         // Fetch settings from UserDefaults (shared via App Group)
         let sharedDefaults = UserDefaults(suiteName: "group.com.luisbracamontes.bracabudget")
         let monthlyEnvelope = sharedDefaults?.double(forKey: "monthlyEnvelope") ?? 0
         let currencyCode = sharedDefaults?.string(forKey: "currencyCode") ?? "USD"
         let conversionRate = sharedDefaults?.double(forKey: "conversionRate") ?? 1.0
-        
+
         // If no budget set, show placeholder
         guard monthlyEnvelope > 0 else {
             return SpendingPowerEntry(
@@ -73,42 +73,33 @@ struct SpendingPowerProvider: TimelineProvider {
                 currency: currencyCode
             )
         }
-        
+
         // Calculate envelope in spending currency
         let envelopeInSpendingCurrency = monthlyEnvelope * conversionRate
-        
-        // Fetch active recurring bills
-        let billDescriptor = FetchDescriptor<RecurringBill>(
-            predicate: #Predicate { $0.isActive }
-        )
-        let activeBills = (try? context.fetch(billDescriptor)) ?? []
-        let committedMonthly = activeBills.reduce(0.0) { $0 + $1.monthlyEquivalent }
-        
-        // Fetch monthly goals
-        let goalDescriptor = FetchDescriptor<Goal>()
-        let allGoals = (try? context.fetch(goalDescriptor)) ?? []
-        let allocatedMonthly = allGoals
-            .filter { $0.period == .monthly }
-            .reduce(0.0) { $0 + $1.spendingLimit }
-        
+
+        // Fetch all allocations
+        let allocationDescriptor = FetchDescriptor<Allocation>()
+        let allAllocations = (try? context.fetch(allocationDescriptor)) ?? []
+        let allocatedMonthly = allAllocations.reduce(0.0) { $0 + $1.monthlyEquivalent }
+
         // Calculate discretionary pool
-        let discretionaryPool = max(0, envelopeInSpendingCurrency - committedMonthly - allocatedMonthly)
-        
+        let discretionaryPool = max(0, envelopeInSpendingCurrency - allocatedMonthly)
+
         // Calculate weekly allowance
         let calendar = Calendar.current
         let daysInMonth = calendar.range(of: .day, in: .month, for: Date())?.count ?? 30
         let weeksInMonth = Double(daysInMonth) / 7.0
         let weeklyAllowance = weeksInMonth > 0 ? discretionaryPool / weeksInMonth : 0
-        
+
         // Calculate week boundaries
         let now = Date()
         let weekStart = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: now)
         let weekStartDate = calendar.date(from: weekStart) ?? now
         let weekEndDate = calendar.date(byAdding: .day, value: 6, to: weekStartDate) ?? now
-        
-        // Fetch goal category names
-        let goalCategoryNames = Set(allGoals.map { $0.categoryName })
-        
+
+        // Category names that have an allocation
+        let allocationCategoryNames = Set(allAllocations.map { $0.categoryName })
+
         // Fetch discretionary spending this week
         let transactionDescriptor = FetchDescriptor<Transaction>(
             predicate: #Predicate<Transaction> { transaction in
@@ -119,18 +110,17 @@ struct SpendingPowerProvider: TimelineProvider {
             sortBy: [SortDescriptor(\.date, order: .reverse)]
         )
         let weekTransactions = (try? context.fetch(transactionDescriptor)) ?? []
-        
+
         let weeklyDiscretionarySpent = weekTransactions
             .filter { transaction in
-                transaction.recurringBillID == nil &&
-                !goalCategoryNames.contains(transaction.categoryName)
+                !allocationCategoryNames.contains(transaction.categoryName)
             }
             .reduce(0.0) { $0 + $1.amount }
-        
+
         // Calculate available and days left
         let weeklyAvailable = weeklyAllowance - weeklyDiscretionarySpent
         let daysLeft = max(0, calendar.dateComponents([.day], from: calendar.startOfDay(for: now), to: weekEndDate).day ?? 0)
-        
+
         return SpendingPowerEntry(
             date: now,
             weeklyAvailable: weeklyAvailable,

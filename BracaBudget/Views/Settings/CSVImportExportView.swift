@@ -7,12 +7,16 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
+
 struct CSVImportExportView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var settings
 
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
-    @Query(sort: \Goal.categoryName) private var goals: [Goal]
+    @Query(sort: \Allocation.categoryName) private var allocations: [Allocation]
     @Query(sort: \Category.sortOrder) private var categories: [Category]
 
     // Export state
@@ -95,16 +99,16 @@ struct CSVImportExportView: View {
             }
             .disabled(transactions.isEmpty)
 
-            // Export Plans (fixed costs + flexible caps)
+            // Export Allocations
             Button {
-                exportDocument = CSVFileDocument(CSVManager.exportGoals(goals))
-                exportFilename = "BracaBudget_Plans.csv"
+                exportDocument = CSVFileDocument(CSVManager.exportAllocations(allocations))
+                exportFilename = "BracaBudget_Allocations.csv"
                 showExporter = true
             } label: {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Plans")
-                        Text("\(goals.count) record\(goals.count == 1 ? "" : "s")")
+                        Text("Allocations")
+                        Text("\(allocations.count) record\(allocations.count == 1 ? "" : "s")")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -112,7 +116,7 @@ struct CSVImportExportView: View {
                     Image(systemName: "target")
                 }
             }
-            .disabled(goals.isEmpty)
+            .disabled(allocations.isEmpty)
         } header: {
             Text("Export as CSV")
         } footer: {
@@ -152,7 +156,11 @@ struct CSVImportExportView: View {
 
             do {
                 let csvString = try String(contentsOf: url, encoding: .utf8)
-                let result = CSVManager.importTransactions(from: csvString, existingCategories: categories)
+                let result = CSVManager.importTransactions(
+                    from: csvString,
+                    existingCategories: categories,
+                    defaultCurrencyCode: settings.currencyCode
+                )
 
                 if result.transactions.isEmpty && !result.errors.isEmpty {
                     importErrorMessage = result.errors.first ?? "No valid transactions found."
@@ -183,6 +191,10 @@ struct CSVImportExportView: View {
             try modelContext.save()
             importedCount = result.transactions.count
             showImportSuccess = true
+
+            #if canImport(WidgetKit)
+            WidgetCenter.shared.reloadAllTimelines()
+            #endif
         } catch {
             importErrorMessage = "Failed to save: \(error.localizedDescription)"
             showImportError = true

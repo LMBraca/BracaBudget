@@ -17,8 +17,8 @@ struct BudgetView: View {
     @Environment(\.modelContext)      private var modelContext
     @Environment(\.appTab)            private var selectedTab
 
-    @Query(sort: \Goal.categoryName)
-    private var goals: [Goal]
+    @Query(sort: \Allocation.categoryName)
+    private var allocations: [Allocation]
 
     @Query(sort: \Transaction.date, order: .reverse)
     private var allTransactions: [Transaction]
@@ -34,7 +34,7 @@ struct BudgetView: View {
         BudgetCalculations(
             settings: settings,
             converter: converter,
-            goals: goals,
+            allocations: allocations,
             allTransactions: allTransactions
         )
     }
@@ -77,6 +77,7 @@ struct BudgetView: View {
                     }
                     spendingPowerCard
                     mathBreakdownCard
+                    discretionaryByCategoryCard
                     plannedSpendingCard
                 }
                 .padding(.horizontal)
@@ -251,8 +252,7 @@ struct BudgetView: View {
                 }
             }
 
-            mathRow("Recurring costs", value: calc.committedMonthly, color: .orange, sign: "−")
-            mathRow("Spending limits", value: calc.allocatedMonthly, color: .purple, sign: "−")
+            mathRow("Allocations", value: calc.allocatedMonthly, color: .purple, sign: "−")
 
             Divider()
 
@@ -292,44 +292,29 @@ struct BudgetView: View {
         }
     }
 
-    // MARK: - Planned spending card (replaces old Bills + Goals cards)
+    // MARK: - Discretionary by-category card
 
-    private var plannedSpendingCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+    private var discretionaryByCategoryCard: some View {
+        let breakdown = calc.weeklyDiscretionaryByCategory
+
+        return VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Planned Spending")
-                    .font(.headline)
+                Text("Where You're Spending").font(.headline)
                 Spacer()
-                Button { selectedTab.wrappedValue = .goals } label: {
-                    HStack(spacing: 4) {
-                        Text("Manage").font(.subheadline)
-                        Image(systemName: "chevron.right").font(.caption2)
-                    }
-                }
+                Text(calc.weekRangeLabel)
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
-            if goals.isEmpty {
-                Text("Nothing planned yet. Add recurring costs (rent, subscriptions) and spending limits (groceries, dining out) in the Plans tab.")
+            if breakdown.isEmpty {
+                Text("No discretionary spending this week yet. Spending in non-allocated categories will show up here.")
                     .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 4)
             } else {
-                if !calc.fixedGoals.isEmpty {
-                    plannedSection(
-                        title: "Recurring costs",
-                        total: calc.committedMonthly,
-                        color: .orange,
-                        items: calc.fixedGoals
-                    )
-                }
-                if !calc.fixedGoals.isEmpty && !calc.flexibleGoals.isEmpty {
-                    Divider()
-                }
-                if !calc.flexibleGoals.isEmpty {
-                    plannedSection(
-                        title: "Spending limits",
-                        total: calc.allocatedMonthly,
-                        color: .purple,
-                        items: calc.flexibleGoals
-                    )
+                VStack(spacing: 14) {
+                    ForEach(breakdown) { item in
+                        categorySpendingRow(item)
+                    }
                 }
             }
         }
@@ -338,36 +323,80 @@ struct BudgetView: View {
         .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
-    @ViewBuilder
-    private func plannedSection(title: String, total: Double, color: Color, items: [Goal]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Circle().fill(color).frame(width: 8, height: 8)
-                Text(title).font(.subheadline.weight(.semibold))
-                Spacer()
-                Text(fmt(total) + "/mo")
-                    .font(.caption).foregroundStyle(.secondary)
+    private func categorySpendingRow(_ item: BudgetCalculations.CategorySpending) -> some View {
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(Color(hex: item.colorHex).opacity(0.15))
+                    .frame(width: 34, height: 34)
+                Image(systemName: item.icon)
+                    .foregroundStyle(Color(hex: item.colorHex))
             }
-            ForEach(items) { g in
+            VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(g.displayName).font(.subheadline)
-                    if g.displayName != g.categoryName {
-                        Text("· \(g.categoryName)")
-                            .font(.caption).foregroundStyle(.tertiary)
-                    }
+                    Text(item.name).font(.subheadline)
                     Spacer()
-                    Text(fmt(g.spendingLimit) + perPeriodSuffix(for: g))
-                        .font(.caption).foregroundStyle(.secondary)
+                    Text(fmt(item.amount))
+                        .font(.subheadline.weight(.medium))
+                        .contentTransition(.numericText())
                 }
+                ProgressView(value: item.ratio)
+                    .tint(Color(hex: item.colorHex))
+                Text(String(format: "%.0f%% of week's free-spending", item.ratio * 100))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
         }
     }
 
-    private func perPeriodSuffix(for goal: Goal) -> String {
-        switch goal.period {
+    // MARK: - Planned spending card
+
+    private var plannedSpendingCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Allocations")
+                    .font(.headline)
+                Spacer()
+                Button { selectedTab.wrappedValue = .allocations } label: {
+                    HStack(spacing: 4) {
+                        Text("Manage").font(.subheadline)
+                        Image(systemName: "chevron.right").font(.caption2)
+                    }
+                }
+            }
+
+            if allocations.isEmpty {
+                Text("Nothing allocated yet. Set aside money for fixed costs (rent, Netflix) or category caps (groceries, dining) in the Allocations tab.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Circle().fill(Color.purple).frame(width: 8, height: 8)
+                        Text("Total reserved").font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Text(fmt(calc.allocatedMonthly) + "/mo")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    ForEach(allocations) { a in
+                        HStack {
+                            Text(a.categoryName).font(.subheadline)
+                            Spacer()
+                            Text(fmt(a.amount) + perPeriodSuffix(for: a))
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func perPeriodSuffix(for allocation: Allocation) -> String {
+        switch allocation.period {
         case .weekly:  "/wk"
         case .monthly: "/mo"
-        case .yearly:  "/yr"
         }
     }
 
@@ -434,7 +463,7 @@ struct SetEnvelopeView: View {
                     if needsConversion {
                         Text("Your envelope is set in \(budgetCode) (your income currency) and converted to \(spendingCode) using today's exchange rate when calculating your weekly allowance.")
                     } else {
-                        Text("This is the total you allow yourself to spend each month. Recurring costs and spending limits are subtracted to find your weekly free-spending limit.")
+                        Text("This is the total you allow yourself to spend each month. Allocations are subtracted to find your weekly free-spending limit.")
                     }
                 }
             }
@@ -466,7 +495,7 @@ struct SetEnvelopeView: View {
 
 #Preview {
     BudgetView()
-        .modelContainer(for: [Goal.self, Transaction.self, Category.self, RecurringBill.self, MonthlySavingsSnapshot.self], inMemory: true)
+        .modelContainer(for: [Allocation.self, Transaction.self, Category.self, MonthlySavingsSnapshot.self], inMemory: true)
         .environment(AppSettings.shared)
         .environment(CurrencyConverter())
 }

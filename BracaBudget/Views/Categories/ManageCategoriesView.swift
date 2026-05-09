@@ -64,13 +64,17 @@ struct ManageCategoriesView: View {
                                 Spacer()
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                // Default categories are seeded by the app and
+                                // can't be removed — match CategoryListView's
+                                // behavior so the two screens stay consistent.
+                                if !category.isDefault {
                                     Button(role: .destructive) {
                                         categoryToDelete = category
                                         showDeleteConfirm = true
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
-                                
+                                }
                             }
                             .swipeActions(edge: .leading) {
                                 Button {

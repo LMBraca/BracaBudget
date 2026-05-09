@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy – BracaBudget</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #222;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #34C759;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.7;
+    }
+
+    header {
+      padding: 48px 24px 32px;
+      border-bottom: 1px solid var(--border);
+      max-width: 760px;
+      margin: 0 auto;
+    }
+
+    header a {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    header a:hover { text-decoration: underline; }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 16px;
+    }
+
+    .effective {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-top: 6px;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 48px 24px 80px;
+    }
+
+    section {
+      margin-bottom: 40px;
+    }
+
+    h2 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: #ccc;
+      margin-bottom: 12px;
+    }
+
+    ul {
+      color: #ccc;
+      padding-left: 20px;
+      margin-bottom: 12px;
+    }
+
+    ul li {
+      margin-bottom: 6px;
+    }
+
+    .highlight {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+
+    .highlight p {
+      margin: 0;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    footer {
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    footer a { color: var(--muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="index.html">← BracaBudget</a>
+  <h1>Privacy Policy</h1>
+  <p class="effective">Effective date: May 9, 2026</p>
+</header>
+
+<main>
+
+  <div class="highlight">
+    <p>BracaBudget does not collect, store, or transmit any personal data. Your financial information stays entirely on your device.</p>
+  </div>
+
+  <section>
+    <h2>Overview</h2>
+    <p>BracaBudget ("the App") is a personal finance application developed by Luis Mario Bracamontes ("we," "us," or "our"). This Privacy Policy explains what information the App accesses, how it is used, and your rights as a user.</p>
+    <p>We are committed to protecting your privacy. BracaBudget is designed from the ground up to operate without any data collection, user accounts, or cloud connectivity.</p>
+  </section>
+
+  <section>
+    <h2>Information We Do Not Collect</h2>
+    <p>BracaBudget does not collect any of the following:</p>
+    <ul>
+      <li>Personal identifiable information (name, email, address, phone number)</li>
+      <li>Financial account information or credentials</li>
+      <li>Location data</li>
+      <li>Device identifiers or advertising IDs</li>
+      <li>Usage analytics or behavioral data</li>
+      <li>Crash reports sent to third-party services</li>
+      <li>Any data transmitted to our servers or third-party servers</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Data Stored Locally on Your Device</h2>
+    <p>All data you enter into BracaBudget — including transactions, categories, allocations, budget settings, and preferences — is stored exclusively on your device using Apple's SwiftData framework.</p>
+    <p>This data is:</p>
+    <ul>
+      <li>Never uploaded to any server</li>
+      <li>Never shared with third parties</li>
+      <li>Only accessible by you, on your device</li>
+      <li>Subject to your device's own security (Face ID, passcode, encryption)</li>
+    </ul>
+    <p>If you use iCloud Backup, your device backups may include BracaBudget's local data as part of iOS's standard device backup. This is controlled by your iCloud settings and Apple's privacy policies, not by BracaBudget.</p>
+  </section>
+
+  <section>
+    <h2>Exchange Rate Requests</h2>
+    <p>If you enable dual-currency support, BracaBudget makes outbound requests to the <strong>Frankfurter API</strong> (frankfurter.dev) to fetch live exchange rates. These requests:</p>
+    <ul>
+      <li>Do not include any personal data or financial information from your device</li>
+      <li>Only transmit the currency codes you have selected (e.g., "USD" and "MXN")</li>
+      <li>Are made directly from your device to the Frankfurter API</li>
+    </ul>
+    <p>Please refer to Frankfurter's own privacy policy for information about their data practices.</p>
+  </section>
+
+  <section>
+    <h2>Siri & Shortcuts</h2>
+    <p>BracaBudget supports the "Add Expense" Siri Shortcut via Apple's AppIntents framework. Any information you provide via Siri (such as an expense amount or category) is processed locally on your device by Apple's Siri infrastructure. We do not receive or store any data related to your Siri interactions.</p>
+  </section>
+
+  <section>
+    <h2>Home Screen Widgets</h2>
+    <p>BracaBudget's widgets display your current spending allowance on your home screen. Widget data is shared between the main app and the widget extension using Apple's App Groups feature — a local, on-device mechanism. No data is sent externally.</p>
+  </section>
+
+  <section>
+    <h2>CSV Export</h2>
+    <p>BracaBudget allows you to export your transactions and allocations as CSV files. These files are generated locally and shared using iOS's standard share sheet. We do not receive or access any exported files. How you store or share exported files is entirely your responsibility.</p>
+  </section>
+
+  <section>
+    <h2>Children's Privacy</h2>
+    <p>BracaBudget does not knowingly collect any information from anyone, including children under the age of 13. Because no data is collected at all, the App is safe for users of all ages.</p>
+  </section>
+
+  <section>
+    <h2>Third-Party Services</h2>
+    <p>BracaBudget integrates with the following third-party service:</p>
+    <ul>
+      <li><strong>Frankfurter API</strong> (frankfurter.dev) – Exchange rate data. Used only when dual-currency mode is enabled. No personal data is transmitted.</li>
+    </ul>
+    <p>BracaBudget does not use any advertising networks, analytics SDKs, crash reporting services, or social login providers.</p>
+  </section>
+
+  <section>
+    <h2>Data Deletion</h2>
+    <p>You can delete all your BracaBudget data at any time from within the app via <strong>Settings → Clear All Data</strong>. Uninstalling the app from your device also removes all locally stored data.</p>
+  </section>
+
+  <section>
+    <h2>Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. Any changes will be reflected on this page with an updated effective date. We encourage you to review this page periodically.</p>
+  </section>
+
+  <section>
+    <h2>Contact</h2>
+    <p>If you have any questions about this Privacy Policy, please contact us:</p>
+    <p><strong>Luis Mario Bracamontes</strong><br />
+    Email: <a href="mailto:lmbdv50@gmail.com" style="color: #34C759;">lmbdv50@gmail.com</a></p>
+  </section>
+
+</main>
+
+<footer>
+  <p>&copy; 2026 Luis Mario Bracamontes. <a href="index.html">BracaBudget</a></p>
+</footer>
+
+</body>
+</html>

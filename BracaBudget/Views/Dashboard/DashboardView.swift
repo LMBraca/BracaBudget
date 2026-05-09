@@ -3,7 +3,7 @@
 //
 // One question, one answer: "How much can I spend this week?"
 //
-// Everything else (the breakdown, goals, full transaction list, monthly
+// Everything else (the breakdown, allocations, full transaction list, monthly
 // savings) lives in its own tab. The dashboard is a glance, not a report.
 
 import SwiftUI
@@ -18,15 +18,16 @@ struct DashboardView: View {
     @Query(sort: \Transaction.date, order: .reverse)
     private var allTransactions: [Transaction]
 
-    @Query private var goals: [Goal]
+    @Query private var allocations: [Allocation]
 
     @State private var showAddTransaction = false
+    @State private var editingTransaction: Transaction? = nil
 
     private var calc: BudgetCalculations {
         BudgetCalculations(
             settings: settings,
             converter: converter,
-            goals: goals,
+            allocations: allocations,
             allTransactions: allTransactions
         )
     }
@@ -50,7 +51,10 @@ struct DashboardView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink(destination: MonthlySavingsView()) {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
+                        HStack(spacing: 4) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                            Text("Savings").font(.subheadline)
+                        }
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -61,6 +65,9 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showAddTransaction) {
                 AddTransactionView()
+            }
+            .sheet(item: $editingTransaction) { t in
+                AddTransactionView(existing: t)
             }
         }
     }
@@ -162,7 +169,7 @@ struct DashboardView: View {
 
 #Preview {
     DashboardView()
-        .modelContainer(for: [Transaction.self, Goal.self, Category.self, RecurringBill.self, MonthlySavingsSnapshot.self], inMemory: true)
+        .modelContainer(for: [Transaction.self, Allocation.self, Category.self, MonthlySavingsSnapshot.self], inMemory: true)
         .environment(AppSettings.shared)
         .environment(CurrencyConverter())
 }

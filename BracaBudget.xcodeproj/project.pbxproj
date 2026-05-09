@@ -81,10 +81,9 @@
 			membershipExceptions = (
 				Helpers/Extensions.swift,
 				Helpers/SharedContainer.swift,
+				Models/Allocation.swift,
 				Models/Category.swift,
-				Models/Goal.swift,
 				Models/MonthlySavingsSnapshot.swift,
-				Models/RecurringBill.swift,
 				Models/Transaction.swift,
 			);
 			target = 0045134D2F46C10000F1EA44 /* BracaBudgetWidgetExtension */;

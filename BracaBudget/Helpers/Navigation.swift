@@ -9,7 +9,7 @@ import SwiftUI
 // MARK: - AppTab
 
 enum AppTab: String, Hashable {
-    case dashboard, transactions, budgets, goals, settings
+    case dashboard, transactions, budgets, allocations, settings
 }
 
 // MARK: - Environment key

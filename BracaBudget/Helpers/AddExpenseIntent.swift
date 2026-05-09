@@ -43,9 +43,9 @@ struct AddExpenseIntent: AppIntent {
         
         // IMPORTANT: must include the FULL schema (matching the main app),
         // otherwise SwiftData will treat the missing entities as a destructive
-        // migration and wipe other data (transactions, goals, bills, etc.).
+        // migration and wipe other data.
         let container = try ModelContainer(
-            for: Transaction.self, Category.self, Goal.self, RecurringBill.self, MonthlySavingsSnapshot.self,
+            for: Transaction.self, Category.self, Allocation.self, MonthlySavingsSnapshot.self,
             configurations: ModelConfiguration(url: databaseURL)
         )
 
@@ -55,7 +55,12 @@ struct AddExpenseIntent: AppIntent {
         let categoryName = category.name
         let categoryIcon = category.icon
         let categoryColor = category.colorHex
-        
+
+        // Read the user's spending currency from the shared App Group defaults.
+        // The intent runs out-of-process so it can't touch AppSettings directly.
+        let sharedDefaults = UserDefaults(suiteName: "group.com.luisbracamontes.bracabudget")
+        let currencyCode = sharedDefaults?.string(forKey: "currencyCode") ?? ""
+
         // Create transaction
         let transaction = Transaction(
             title: expenseDescription,
@@ -66,17 +71,18 @@ struct AddExpenseIntent: AppIntent {
             categoryName: categoryName,
             categoryIcon: categoryIcon,
             categoryColorHex: categoryColor,
-            recurringBillID: nil
+            currencyCode: currencyCode
         )
-        
+
         context.insert(transaction)
         try context.save()
-        
+
         // Reload widgets to reflect new expense
         WidgetCenter.shared.reloadAllTimelines()
-        
-        // Format amount for display
-        let formattedAmount = amount.formatted(.currency(code: "USD"))
+
+        // Format amount for display in the user's actual currency, not USD.
+        let displayCode = currencyCode.isEmpty ? Locale.current.currency?.identifier ?? "USD" : currencyCode
+        let formattedAmount = amount.formatted(.currency(code: displayCode))
         
         return .result(
             dialog: IntentDialog("Added \(formattedAmount) expense for \(expenseDescription) to BracaBudget")
@@ -123,7 +129,7 @@ struct CategoryQuery: EntityQuery {
         let databaseURL = containerURL.appendingPathComponent("BracaBudget.sqlite")
         
         let container = try ModelContainer(
-            for: Transaction.self, Category.self, Goal.self, RecurringBill.self, MonthlySavingsSnapshot.self,
+            for: Transaction.self, Category.self, Allocation.self, MonthlySavingsSnapshot.self,
             configurations: ModelConfiguration(url: databaseURL)
         )
         let context = ModelContext(container)
@@ -147,7 +153,7 @@ struct CategoryQuery: EntityQuery {
         let databaseURL = containerURL.appendingPathComponent("BracaBudget.sqlite")
         
         let container = try ModelContainer(
-            for: Transaction.self, Category.self, Goal.self, RecurringBill.self, MonthlySavingsSnapshot.self,
+            for: Transaction.self, Category.self, Allocation.self, MonthlySavingsSnapshot.self,
             configurations: ModelConfiguration(url: databaseURL)
         )
         let context = ModelContext(container)

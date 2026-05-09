@@ -51,7 +51,6 @@ final class AppSettings {
         cachedRatePublishedDate = UserDefaults.standard.string(forKey: Keys.cachedRatePublishedDate) ?? ""
         let savedStartDay       = UserDefaults.standard.integer(forKey: Keys.customMonthStartDay)
         customMonthStartDay     = (savedStartDay > 0) ? savedStartDay : 1
-        hasMigratedBillsToGoals = UserDefaults.standard.bool(forKey: Keys.hasMigratedBillsToGoals)
 
         // Mirror prefs that date helpers (and the widget) read from the App
         // Group container. didSet doesn't fire during init, so upgraded users
@@ -59,6 +58,7 @@ final class AppSettings {
         sharedDefaults.set(weekStart.rawValue,      forKey: Keys.weekStart)
         sharedDefaults.set(customMonthStartDay,     forKey: Keys.customMonthStartDay)
         sharedDefaults.set(currencyCode,            forKey: Keys.currencyCode)
+        sharedDefaults.set(budgetCurrencyCode,      forKey: Keys.budgetCurrencyCode)
         sharedDefaults.set(monthlyEnvelope,         forKey: Keys.monthlyEnvelope)
     }
 
@@ -66,16 +66,21 @@ final class AppSettings {
 
     /// Currency the user pays in day-to-day (e.g. MXN).
     var currencyCode: String = "" {
-        didSet { 
+        didSet {
             UserDefaults.standard.set(currencyCode, forKey: Keys.currencyCode)
             sharedDefaults.set(currencyCode, forKey: Keys.currencyCode)
+            reloadWidgets()
         }
     }
 
     /// Currency the user earns / budgets in (e.g. USD).
     /// Empty string = same as currencyCode (no conversion).
     var budgetCurrencyCode: String = "" {
-        didSet { UserDefaults.standard.set(budgetCurrencyCode, forKey: Keys.budgetCurrencyCode) }
+        didSet {
+            UserDefaults.standard.set(budgetCurrencyCode, forKey: Keys.budgetCurrencyCode)
+            sharedDefaults.set(budgetCurrencyCode, forKey: Keys.budgetCurrencyCode)
+            reloadWidgets()
+        }
     }
 
     var hasCompletedOnboarding: Bool = false {
@@ -91,6 +96,7 @@ final class AppSettings {
         didSet {
             UserDefaults.standard.set(weekStart.rawValue, forKey: Keys.weekStart)
             sharedDefaults.set(weekStart.rawValue, forKey: Keys.weekStart)
+            reloadWidgets()
         }
     }
 
@@ -127,12 +133,6 @@ final class AppSettings {
     /// ISO 8601 date string from the Frankfurter API (e.g. "2025-02-18").
     var cachedRatePublishedDate: String = "" {
         didSet { UserDefaults.standard.set(cachedRatePublishedDate, forKey: Keys.cachedRatePublishedDate) }
-    }
-
-    /// One-time flag: have we migrated legacy `RecurringBill` records into
-    /// fixed `Goal` records yet? Set true after the migration runs.
-    var hasMigratedBillsToGoals: Bool = false {
-        didSet { UserDefaults.standard.set(hasMigratedBillsToGoals, forKey: Keys.hasMigratedBillsToGoals) }
     }
 
     /// Custom month start day (1-28). Default is 1 for calendar month.
@@ -179,6 +179,5 @@ final class AppSettings {
         static let cachedRateTo            = "cachedRateTo"
         static let cachedRatePublishedDate = "cachedRatePublishedDate"
         static let customMonthStartDay     = "customMonthStartDay"
-        static let hasMigratedBillsToGoals = "hasMigratedBillsToGoals"
     }
 }

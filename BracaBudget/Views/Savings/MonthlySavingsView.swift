@@ -178,30 +178,43 @@ struct MonthlySavingsView: View {
         let currentMonth = Date.now.startOfMonth
         let currentRate = needsConversion ? converter.rate : 1.0
         
-        // Create snapshots for missing months
+        // Walk every month that has transactions. Past months either get a new
+        // snapshot (created here) or have their `spentAmount` recomputed when
+        // an existing snapshot is found. Without the recompute, backfilling a
+        // transaction into an old month never updates the saved total — the
+        // history stays frozen at whatever was saved the first time the user
+        // opened this screen.
         for monthStart in monthsWithTransactions {
-            // Skip if snapshot already exists
-            if existingMonths.contains(monthStart) { continue }
-            
-            // Skip current month - we'll create it when it ends
+            // Skip current month — that's calculated live in calculateMonthlyPerformance.
             if monthStart == currentMonth { continue }
-            
+
             let monthEnd = monthStart.endOfMonth
-            
-            // Calculate expenses for this month
+
             let expenses = allTransactions.filter { t in
                 t.type == .expense &&
                 t.date >= monthStart &&
                 t.date <= monthEnd
             }.reduce(0) { $0 + $1.amount }
-            
-            // Skip months with no expenses
+
+            // Skip months with no expenses.
             guard expenses > 0 else { continue }
-            
-            // For past months, use an estimated average rate if we don't have historical data
-            // In a real app, you'd want to fetch historical rates or save them as they happen
+
+            if existingMonths.contains(monthStart) {
+                // Update the existing snapshot if a backfill changed the total.
+                // Don't touch the locked exchange rate — that's the whole point
+                // of the snapshot. Only `spentAmount` and the current budget
+                // should follow the source of truth.
+                if let existing = snapshots.first(where: { $0.monthStart == monthStart }),
+                   existing.spentAmount != expenses {
+                    existing.spentAmount = expenses
+                }
+                continue
+            }
+
+            // For past months without a snapshot, lock the current rate. Ideally
+            // we'd fetch a historical rate; that's a separate, larger fix.
             let rate = needsConversion ? currentRate : 1.0
-            
+
             let snapshot = MonthlySavingsSnapshot(
                 monthStart: monthStart,
                 monthEnd: monthEnd,
@@ -211,10 +224,10 @@ struct MonthlySavingsView: View {
                 budgetCurrencyCode: budgetCode,
                 spendingCurrencyCode: spendingCode
             )
-            
+
             modelContext.insert(snapshot)
         }
-        
+
         try? modelContext.save()
     }
     

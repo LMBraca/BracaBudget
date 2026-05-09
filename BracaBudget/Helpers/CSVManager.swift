@@ -1,7 +1,7 @@
 // CSVManager.swift
 // BracaBudget
 //
-// Handles CSV export and import for transactions, recurring bills, and goals.
+// Handles CSV export and import for transactions and allocations.
 
 import Foundation
 import SwiftUI
@@ -24,17 +24,18 @@ struct CSVManager {
     // MARK: - Export Transactions
 
     /// Builds a CSV string for all provided transactions.
-    /// Columns: Date, Title, Amount, Type, Category, Note
+    /// Columns: Date, Title, Amount, Currency, Type, Category, Note
     static func exportTransactions(_ transactions: [Transaction]) -> String {
-        var csv = "Date,Title,Amount,Type,Category,Note\n"
+        var csv = "Date,Title,Amount,Currency,Type,Category,Note\n"
         for t in transactions.sorted(by: { $0.date > $1.date }) {
             let date     = csvDateFormatter.string(from: t.date)
             let title    = escapeCSV(t.title)
             let amount   = String(format: "%.2f", t.amount)
+            let currency = escapeCSV(t.currencyCode)
             let type     = t.type.rawValue
             let category = escapeCSV(t.categoryName)
             let note     = escapeCSV(t.note)
-            csv += "\(date),\(title),\(amount),\(type),\(category),\(note)\n"
+            csv += "\(date),\(title),\(amount),\(currency),\(type),\(category),\(note)\n"
         }
         return csv
     }
@@ -42,9 +43,14 @@ struct CSVManager {
     // MARK: - Import Transactions
 
     /// Parses a CSV string and returns an array of Transaction objects.
-    /// Expected columns: Date, Title, Amount, Type, Category, Note
-    /// Columns are matched by header name, so order can vary.
-    static func importTransactions(from csvString: String, existingCategories: [Category]) -> ImportResult {
+    /// Expected columns: Date, Title, Amount, [Currency], Type, Category, Note
+    /// Columns are matched by header name, so order can vary. Currency is
+    /// optional; missing values will be backfilled with `defaultCurrencyCode`.
+    static func importTransactions(
+        from csvString: String,
+        existingCategories: [Category],
+        defaultCurrencyCode: String = ""
+    ) -> ImportResult {
         // Strip UTF-8 BOM (Excel exports often include one) and normalise CRLF.
         var normalized = csvString
         if normalized.hasPrefix("\u{FEFF}") {
@@ -67,6 +73,7 @@ struct CSVManager {
         let dateIdx     = headers.firstIndex(of: "date")
         let titleIdx    = headers.firstIndex(of: "title")
         let amountIdx   = headers.firstIndex(of: "amount")
+        let currencyIdx = headers.firstIndex(of: "currency")
         let typeIdx     = headers.firstIndex(of: "type")
         let categoryIdx = headers.firstIndex(of: "category")
         let noteIdx     = headers.firstIndex(of: "note")
@@ -151,6 +158,15 @@ struct CSVManager {
                 note = fields[nIdx].trimmingCharacters(in: .whitespaces)
             }
 
+            // Parse currency (optional). Falls back to the user's current
+            // spending currency so legacy CSVs without the column still get
+            // a sensible code stamped on each row.
+            var currency = defaultCurrencyCode
+            if let curIdx = currencyIdx, curIdx < fields.count {
+                let raw = fields[curIdx].trimmingCharacters(in: .whitespaces)
+                if !raw.isEmpty { currency = raw.uppercased() }
+            }
+
             let transaction = Transaction(
                 title: title,
                 amount: amount,
@@ -159,7 +175,8 @@ struct CSVManager {
                 note: note,
                 categoryName: catName,
                 categoryIcon: catIcon,
-                categoryColorHex: catColor
+                categoryColorHex: catColor,
+                currencyCode: currency
             )
             transactions.append(transaction)
         }
@@ -167,37 +184,17 @@ struct CSVManager {
         return ImportResult(transactions: transactions, skippedRows: skipped, errors: errors)
     }
 
-    // MARK: - Export Recurring Bills
+    // MARK: - Export Allocations
 
-    /// Builds a CSV string for all provided recurring bills.
-    static func exportRecurringBills(_ bills: [RecurringBill]) -> String {
-        var csv = "Name,Amount,Frequency,Category,StartDate,Active,Notes\n"
-        for b in bills.sorted(by: { $0.name < $1.name }) {
-            let name      = escapeCSV(b.name)
-            let amount    = String(format: "%.2f", b.amount)
-            let freq      = b.frequency.rawValue
-            let category  = escapeCSV(b.categoryName)
-            let startDate = csvDateFormatter.string(from: b.startDate)
-            let active    = b.isActive ? "Yes" : "No"
-            let notes     = escapeCSV(b.notes)
-            csv += "\(name),\(amount),\(freq),\(category),\(startDate),\(active),\(notes)\n"
-        }
-        return csv
-    }
-
-    // MARK: - Export Goals
-
-    /// Builds a CSV string for all provided goals.
-    static func exportGoals(_ goals: [Goal]) -> String {
-        var csv = "Kind,Name,Category,SpendingLimit,Period,Notes\n"
-        for g in goals.sorted(by: { $0.categoryName < $1.categoryName }) {
-            let kind     = g.kind.rawValue
-            let name     = escapeCSV(g.name)
-            let category = escapeCSV(g.categoryName)
-            let limit    = String(format: "%.2f", g.spendingLimit)
-            let period   = g.period.rawValue
-            let notes    = escapeCSV(g.notes)
-            csv += "\(kind),\(name),\(category),\(limit),\(period),\(notes)\n"
+    /// Builds a CSV string for all provided allocations.
+    static func exportAllocations(_ allocations: [Allocation]) -> String {
+        var csv = "Category,Amount,Period,Notes\n"
+        for a in allocations.sorted(by: { $0.categoryName < $1.categoryName }) {
+            let category = escapeCSV(a.categoryName)
+            let amount   = String(format: "%.2f", a.amount)
+            let period   = a.period.rawValue
+            let notes    = escapeCSV(a.notes)
+            csv += "\(category),\(amount),\(period),\(notes)\n"
         }
         return csv
     }

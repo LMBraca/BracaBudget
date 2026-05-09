@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BracaBudget – Envelope Budget & Expense Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #34C759;
+      --bg: #0a0a0a;
+      --surface: #141414;
+      --border: #222;
+      --text: #f0f0f0;
+      --muted: #888;
+      --accent: #34C759;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+    }
+
+    header {
+      text-align: center;
+      padding: 80px 24px 60px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .app-icon {
+      width: 120px;
+      height: 120px;
+      background: linear-gradient(135deg, #1a3a1a, #2d6e2d);
+      border-radius: 27px;
+      margin: 0 auto 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 56px;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+
+    .tagline {
+      color: var(--muted);
+      font-size: 1.1rem;
+      margin-top: 10px;
+    }
+
+    .badge {
+      display: inline-block;
+      background: var(--accent);
+      color: #000;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-top: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+
+    section {
+      margin-bottom: 60px;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 20px;
+      color: var(--accent);
+    }
+
+    p {
+      color: #ccc;
+      margin-bottom: 14px;
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+    }
+
+    .feature-card .icon {
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+
+    .feature-card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .feature-card p {
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .support-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+    }
+
+    .support-box a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    .support-box a:hover {
+      text-decoration: underline;
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--muted);
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="app-icon">💰</div>
+  <h1>BracaBudget</h1>
+  <p class="tagline">Envelope budgeting. Know what you can spend this week.</p>
+  <span class="badge">Free · iOS · No Ads · No Cloud</span>
+</header>
+
+<main>
+
+  <section>
+    <h2>How it works</h2>
+    <p>BracaBudget is built around the envelope budgeting method — the proven strategy of giving every dollar a job before you spend it.</p>
+    <p>Set your monthly spending envelope, assign fixed allocations to recurring expenses (rent, groceries, transport), and BracaBudget calculates your exact weekly discretionary allowance. One number. Every week.</p>
+  </section>
+
+  <section>
+    <h2>Features</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="icon">📊</div>
+        <h3>Weekly Spending Dashboard</h3>
+        <p>See exactly how much you can spend today, with a visual progress bar that keeps you honest.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📋</div>
+        <h3>Transaction Tracking</h3>
+        <p>Log expenses and income in seconds with categories, notes, and dates.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🎯</div>
+        <h3>Allocations</h3>
+        <p>Set weekly or monthly caps per category. Alerts when you're close to the limit.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">💱</div>
+        <h3>Dual Currency</h3>
+        <p>Budget in one currency, spend in another. Live exchange rates included.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📱</div>
+        <h3>Home Screen Widgets</h3>
+        <p>Small, medium, and large widgets showing your weekly allowance at a glance.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🎙️</div>
+        <h3>Siri Shortcuts</h3>
+        <p>Add expenses hands-free with the "Add Expense" Siri Shortcut.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🗓️</div>
+        <h3>Custom Calendar</h3>
+        <p>Pick your week start day and custom month start date to match your pay cycle.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📁</div>
+        <h3>CSV Import & Export</h3>
+        <p>Full data backup and restore. Your data is always portable.</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🔒</div>
+        <h3>100% Private</h3>
+        <p>No accounts. No cloud. No ads. Your financial data never leaves your device.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Support</h2>
+    <div class="support-box">
+      <p>Have a question, found a bug, or want to suggest a feature? Reach out — we're happy to help.</p>
+      <p>
+        Email: <a href="mailto:lmbdv50@gmail.com">lmbdv50@gmail.com</a>
+      </p>
+      <p style="margin-top: 16px;">
+        <a href="privacy-policy.html">Privacy Policy</a>
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <p>&copy; 2026 Luis Mario Bracamontes. All rights reserved.</p>
+  <p style="margin-top: 8px;"><a href="privacy-policy.html">Privacy Policy</a></p>
+</footer>
+
+</body>
+</html>

@@ -35,10 +35,13 @@ struct TransactionRowView: View {
 
             Spacer()
 
-            // Amount
+            // Amount — use the transaction's snapshotted currency so old rows
+            // don't get relabelled when the user changes their spending currency.
             Text(
                 (transaction.type == .income ? "+" : "-") +
-                transaction.amount.formatted(currency: settings.currencyCode)
+                transaction.amount.formatted(
+                    currency: transaction.displayCurrencyCode(default: settings.currencyCode)
+                )
             )
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(transaction.type == .income ? .green : .red)

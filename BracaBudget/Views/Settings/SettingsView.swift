@@ -4,6 +4,10 @@
 import SwiftUI
 import SwiftData
 
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
+
 struct SettingsView: View {
     @Environment(\.modelContext)         private var modelContext
     @Environment(AppSettings.self)       private var settings
@@ -38,7 +42,7 @@ struct SettingsView: View {
             .sheet(isPresented: $showSpendingCurrencyPicker) {
                 CurrencyPickerSheet(
                     title: "Spending Currency",
-                    footer: "The currency you pay in day-to-day (transactions and plans are entered in this currency).",
+                    footer: "The currency you pay in day-to-day (transactions and allocations are entered in this currency).",
                     currentCode: settings.currencyCode
                 ) { code in
                     settings.currencyCode = code
@@ -261,12 +265,12 @@ struct SettingsView: View {
                 Button("Delete Everything", role: .destructive, action: deleteAllData)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will permanently remove all transactions, plans, and categories. This cannot be undone.")
+                Text("This will permanently remove all transactions, allocations, and categories. This cannot be undone.")
             }
         } header: {
             Text("Danger Zone")
         } footer: {
-            Text("Irreversible. All transactions, plans, and custom categories will be removed.")
+            Text("Irreversible. All transactions, allocations, and custom categories will be removed.")
         }
     }
 
@@ -292,9 +296,7 @@ struct SettingsView: View {
     private func deleteAllData() {
         do {
             try modelContext.delete(model: Transaction.self)
-            try modelContext.delete(model: Goal.self)
-            try modelContext.delete(model: RecurringBill.self)
-            let customPredicate = #Predicate<Category> { !$0.isDefault }
+            try modelContext.delete(model: Allocation.self)
             try modelContext.delete(model: Category.self)
             try modelContext.save()
         } catch {
@@ -302,6 +304,10 @@ struct SettingsView: View {
         }
         settings.hasSeededCategories = false
         seedDefaultCategoriesIfNeeded(context: modelContext)
+
+        #if canImport(WidgetKit)
+        WidgetCenter.shared.reloadAllTimelines()
+        #endif
     }
     
     private func loadTestData() {
@@ -342,7 +348,7 @@ struct SettingsView: View {
         } header: {
             Text("Data")
         } footer: {
-            Text("Import or export your transactions and plans as CSV files.")
+            Text("Import or export your transactions and allocations as CSV files.")
         }
     }
     
@@ -365,12 +371,12 @@ struct SettingsView: View {
                 Button("Load Test Data", role: .destructive, action: loadTestData)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will DELETE all existing data and replace it with comprehensive test data for testing rollbacks, budgets, and goals.")
+                Text("This will DELETE all existing data and replace it with comprehensive test data for testing rollbacks, budgets, and allocations.")
             }
         } header: {
             Text("Developer Tools")
         } footer: {
-            Text("Loads comprehensive test data including transactions with recurring bills, various categories, dates spanning multiple weeks/months, income entries, and edge cases for testing rollback functionality and budget calculations. WARNING: This will delete all existing data.")
+            Text("Loads comprehensive test data including transactions, various categories, dates spanning multiple weeks/months, income entries, and edge cases for testing rollback functionality and budget calculations. WARNING: This will delete all existing data.")
         }
     }
     #endif

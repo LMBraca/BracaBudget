@@ -54,8 +54,8 @@ struct WeeklyLogView: View {
                 Spacer()
                 VStack(alignment: .trailing, spacing: 2) {
                     Text("Unused → next: " + format(log.unusedRolledForward, code: log.currencyCode))
-                    if log.goalsWithLeftover > 0 {
-                        Text("Goals with leftover: \(log.goalsWithLeftover)")
+                    if log.allocationsWithLeftover > 0 {
+                        Text("Allocations with leftover: \(log.allocationsWithLeftover)")
                     }
                 }
                 .font(.caption)

@@ -69,7 +69,11 @@ struct AddTransactionView: View {
                 Text("Please fill in a title, a valid amount greater than zero, and choose a category.")
             }
             .sheet(isPresented: $showCategoryPicker) {
-                CategoryPickerSheet(categories: filteredCategories, selected: $selectedCategory)
+                CategoryPickerSheet(
+                    categories: filteredCategories,
+                    isExpense: type == .expense,
+                    selected: $selectedCategory
+                )
             }
         }
     }
@@ -172,6 +176,12 @@ struct AddTransactionView: View {
             t.categoryName     = cat.name
             t.categoryIcon     = cat.icon
             t.categoryColorHex = cat.colorHex
+            // Only stamp a currency on rows that don't already have one; never
+            // overwrite a saved code on edit, otherwise old transactions get
+            // silently relabelled when the user changes their spending currency.
+            if t.currencyCode.isEmpty {
+                t.currencyCode = settings.currencyCode
+            }
         } else {
             let t = Transaction(
                 title:            trimmed,
@@ -181,7 +191,8 @@ struct AddTransactionView: View {
                 note:             note,
                 categoryName:     cat.name,
                 categoryIcon:     cat.icon,
-                categoryColorHex: cat.colorHex
+                categoryColorHex: cat.colorHex,
+                currencyCode:     settings.currencyCode
             )
             modelContext.insert(t)
         }
@@ -201,16 +212,17 @@ struct AddTransactionView: View {
 
 struct CategoryPickerSheet: View {
     let categories: [Category]
+    /// Passed in by the caller — the previous heuristic (look at the first
+    /// existing category's `isExpense`) silently defaulted to `true` whenever
+    /// the user had no income categories yet, so newly created ones got
+    /// stamped as expenses regardless of what the user picked in the type
+    /// segment above.
+    let isExpense: Bool
     @Binding var selected: Category?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @State private var searchText = ""
     @State private var showAddCategory = false
-
-    // Determine if we're picking expense or income category based on existing categories
-    private var isExpense: Bool {
-        categories.first?.isExpense ?? true
-    }
 
     private var filtered: [Category] {
         guard !searchText.isEmpty else { return categories }

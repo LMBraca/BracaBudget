@@ -18,7 +18,7 @@ final class WeeklyLog {
     var totalAvailable: Double
     var rolledOverAmount: Double
     var unusedRolledForward: Double
-    var goalsWithLeftover: Int
+    var allocationsWithLeftover: Int
 
     // Currency code used for formatting in UI
     var currencyCode: String
@@ -32,7 +32,7 @@ final class WeeklyLog {
         totalAvailable: Double,
         rolledOverAmount: Double,
         unusedRolledForward: Double,
-        goalsWithLeftover: Int,
+        allocationsWithLeftover: Int,
         currencyCode: String,
         createdAt: Date = .now
     ) {
@@ -41,7 +41,7 @@ final class WeeklyLog {
         self.totalAvailable     = totalAvailable
         self.rolledOverAmount   = rolledOverAmount
         self.unusedRolledForward = unusedRolledForward
-        self.goalsWithLeftover  = goalsWithLeftover
+        self.allocationsWithLeftover  = allocationsWithLeftover
         self.currencyCode       = currencyCode
         self.createdAt          = createdAt
     }

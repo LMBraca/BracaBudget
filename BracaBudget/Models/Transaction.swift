@@ -20,8 +20,11 @@ final class Transaction {
     var categoryName: String      = ""
     var categoryIcon: String      = "square.grid.2x2"
     var categoryColorHex: String  = "#6C757D"
-    // Optional link back to a RecurringBill that created this transaction
-    var recurringBillID: UUID?    = nil
+    /// Currency the amount was logged in. Snapshotted at save time so changing
+    /// the user's spending currency later doesn't silently re-label history.
+    /// Empty for transactions saved before this field existed — callers should
+    /// fall back to the current `AppSettings.currencyCode` in that case.
+    var currencyCode: String      = ""
 
     init(
         title: String,
@@ -32,7 +35,7 @@ final class Transaction {
         categoryName: String = "",
         categoryIcon: String = "square.grid.2x2",
         categoryColorHex: String = "#6C757D",
-        recurringBillID: UUID? = nil
+        currencyCode: String = ""
     ) {
         self.title            = title
         self.amount           = amount
@@ -42,6 +45,14 @@ final class Transaction {
         self.categoryName     = categoryName
         self.categoryIcon     = categoryIcon
         self.categoryColorHex = categoryColorHex
-        self.recurringBillID  = recurringBillID
+        self.currencyCode     = currencyCode
+    }
+}
+
+extension Transaction {
+    /// Currency to use when displaying this transaction. Falls back to the
+    /// passed-in default for legacy rows that have no stored code.
+    func displayCurrencyCode(default fallback: String) -> String {
+        currencyCode.isEmpty ? fallback : currencyCode
     }
 }
