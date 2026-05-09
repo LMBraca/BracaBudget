@@ -3,239 +3,217 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BracaBudget – Envelope Budget & Expense Tracker</title>
+  <title>BracaBudget</title>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --green: #34C759;
-      --bg: #0a0a0a;
-      --surface: #141414;
-      --border: #222;
-      --text: #f0f0f0;
-      --muted: #888;
-      --accent: #34C759;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+      font-size: 17px;
       line-height: 1.6;
+      color: #1a1a1a;
+      background: #fff;
+      -webkit-font-smoothing: antialiased;
     }
 
-    header {
-      text-align: center;
-      padding: 80px 24px 60px;
-      border-bottom: 1px solid var(--border);
+    .wrap {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 24px;
     }
 
-    .app-icon {
-      width: 120px;
-      height: 120px;
-      background: linear-gradient(135deg, #1a3a1a, #2d6e2d);
-      border-radius: 27px;
-      margin: 0 auto 24px;
+    nav {
+      padding: 32px 0 0;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 56px;
+      justify-content: space-between;
     }
 
-    h1 {
-      font-size: 2.4rem;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-
-    .tagline {
-      color: var(--muted);
-      font-size: 1.1rem;
-      margin-top: 10px;
-    }
-
-    .badge {
-      display: inline-block;
-      background: var(--accent);
-      color: #000;
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 3px 10px;
-      border-radius: 20px;
-      margin-top: 14px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    main {
-      max-width: 760px;
-      margin: 0 auto;
-      padding: 60px 24px;
-    }
-
-    section {
-      margin-bottom: 60px;
-    }
-
-    h2 {
-      font-size: 1.5rem;
+    nav .name {
       font-weight: 600;
-      margin-bottom: 20px;
-      color: var(--accent);
-    }
-
-    p {
-      color: #ccc;
-      margin-bottom: 14px;
-    }
-
-    .feature-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 16px;
-    }
-
-    .feature-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 20px;
-    }
-
-    .feature-card .icon {
-      font-size: 28px;
-      margin-bottom: 10px;
-    }
-
-    .feature-card h3 {
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .feature-card p {
-      font-size: 0.9rem;
-      color: var(--muted);
-      margin: 0;
-    }
-
-    .support-box {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 28px;
-    }
-
-    .support-box a {
-      color: var(--accent);
+      font-size: 15px;
+      color: #1a1a1a;
       text-decoration: none;
     }
 
-    .support-box a:hover {
-      text-decoration: underline;
+    nav a {
+      font-size: 14px;
+      color: #666;
+      text-decoration: none;
+    }
+
+    nav a:hover { color: #1a1a1a; }
+
+    .hero {
+      padding: 80px 0 64px;
+      border-bottom: 1px solid #eee;
+    }
+
+    .hero h1 {
+      font-size: 2.25rem;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+      margin-bottom: 16px;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      color: #555;
+      max-width: 480px;
+    }
+
+    .hero .platform {
+      display: inline-block;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #999;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    section {
+      padding: 56px 0;
+      border-bottom: 1px solid #eee;
+    }
+
+    section:last-child {
+      border-bottom: none;
+    }
+
+    h2 {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #999;
+      margin-bottom: 24px;
+    }
+
+    .features {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .features li {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 16px;
+      align-items: baseline;
+    }
+
+    .features .label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1a1a1a;
+    }
+
+    .features .desc {
+      font-size: 15px;
+      color: #555;
+    }
+
+    @media (max-width: 520px) {
+      .features li {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+    }
+
+    .support-body p {
+      color: #555;
+      margin-bottom: 12px;
+    }
+
+    .support-body p:last-child { margin-bottom: 0; }
+
+    .support-body a {
+      color: #1a1a1a;
+      font-weight: 500;
     }
 
     footer {
-      text-align: center;
-      padding: 40px 24px;
-      border-top: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 0.85rem;
+      padding: 40px 0;
+      color: #bbb;
+      font-size: 13px;
+      display: flex;
+      gap: 20px;
     }
 
     footer a {
-      color: var(--muted);
-      text-decoration: underline;
+      color: #bbb;
+      text-decoration: none;
     }
+
+    footer a:hover { color: #666; }
   </style>
 </head>
 <body>
+<div class="wrap">
 
-<header>
-  <div class="app-icon">💰</div>
-  <h1>BracaBudget</h1>
-  <p class="tagline">Envelope budgeting. Know what you can spend this week.</p>
-  <span class="badge">Free · iOS · No Ads · No Cloud</span>
-</header>
+  <nav>
+    <span class="name">BracaBudget</span>
+    <a href="privacy-policy.html">Privacy Policy</a>
+  </nav>
 
-<main>
-
-  <section>
-    <h2>How it works</h2>
-    <p>BracaBudget is built around the envelope budgeting method — the proven strategy of giving every dollar a job before you spend it.</p>
-    <p>Set your monthly spending envelope, assign fixed allocations to recurring expenses (rent, groceries, transport), and BracaBudget calculates your exact weekly discretionary allowance. One number. Every week.</p>
-  </section>
+  <div class="hero">
+    <h1>Envelope budgeting for iOS.</h1>
+    <p>Set your monthly spending envelope, assign fixed costs, and know exactly how much you can spend each week.</p>
+    <span class="platform">Free &middot; iPhone &middot; No account required</span>
+  </div>
 
   <section>
     <h2>Features</h2>
-    <div class="feature-grid">
-      <div class="feature-card">
-        <div class="icon">📊</div>
-        <h3>Weekly Spending Dashboard</h3>
-        <p>See exactly how much you can spend today, with a visual progress bar that keeps you honest.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon">📋</div>
-        <h3>Transaction Tracking</h3>
-        <p>Log expenses and income in seconds with categories, notes, and dates.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon">🎯</div>
-        <h3>Allocations</h3>
-        <p>Set weekly or monthly caps per category. Alerts when you're close to the limit.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon">💱</div>
-        <h3>Dual Currency</h3>
-        <p>Budget in one currency, spend in another. Live exchange rates included.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon">📱</div>
-        <h3>Home Screen Widgets</h3>
-        <p>Small, medium, and large widgets showing your weekly allowance at a glance.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon">🎙️</div>
-        <h3>Siri Shortcuts</h3>
-        <p>Add expenses hands-free with the "Add Expense" Siri Shortcut.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon">🗓️</div>
-        <h3>Custom Calendar</h3>
-        <p>Pick your week start day and custom month start date to match your pay cycle.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon">📁</div>
-        <h3>CSV Import & Export</h3>
-        <p>Full data backup and restore. Your data is always portable.</p>
-      </div>
-      <div class="feature-card">
-        <div class="icon">🔒</div>
-        <h3>100% Private</h3>
-        <p>No accounts. No cloud. No ads. Your financial data never leaves your device.</p>
-      </div>
-    </div>
+    <ul class="features">
+      <li>
+        <span class="label">Weekly allowance</span>
+        <span class="desc">One clear number each week — what's left after fixed expenses are accounted for.</span>
+      </li>
+      <li>
+        <span class="label">Allocations</span>
+        <span class="desc">Set weekly or monthly caps per category. Visual progress bars warn you before you overspend.</span>
+      </li>
+      <li>
+        <span class="label">Dual currency</span>
+        <span class="desc">Budget in one currency, spend in another, with live exchange rates from Frankfurter.</span>
+      </li>
+      <li>
+        <span class="label">Home screen widgets</span>
+        <span class="desc">Small, medium, and large widgets showing your remaining allowance at a glance.</span>
+      </li>
+      <li>
+        <span class="label">Siri Shortcuts</span>
+        <span class="desc">Log expenses hands-free using the "Add Expense" shortcut.</span>
+      </li>
+      <li>
+        <span class="label">Custom calendar</span>
+        <span class="desc">Set a custom week start day and month start date to match your pay cycle.</span>
+      </li>
+      <li>
+        <span class="label">CSV import/export</span>
+        <span class="desc">Back up and restore your data in a portable, open format.</span>
+      </li>
+      <li>
+        <span class="label">100% local</span>
+        <span class="desc">No account, no cloud, no ads. Your data never leaves your device.</span>
+      </li>
+    </ul>
   </section>
 
   <section>
     <h2>Support</h2>
-    <div class="support-box">
-      <p>Have a question, found a bug, or want to suggest a feature? Reach out — we're happy to help.</p>
-      <p>
-        Email: <a href="mailto:lmbdv50@gmail.com">lmbdv50@gmail.com</a>
-      </p>
-      <p style="margin-top: 16px;">
-        <a href="privacy-policy.html">Privacy Policy</a>
-      </p>
+    <div class="support-body">
+      <p>For questions, bug reports, or feature requests, email <a href="mailto:lmbdv50@gmail.com">lmbdv50@gmail.com</a>.</p>
     </div>
   </section>
 
-</main>
+  <footer>
+    <span>&copy; 2026 Luis Mario Bracamontes</span>
+    <a href="privacy-policy.html">Privacy Policy</a>
+  </footer>
 
-<footer>
-  <p>&copy; 2026 Luis Mario Bracamontes. All rights reserved.</p>
-  <p style="margin-top: 8px;"><a href="privacy-policy.html">Privacy Policy</a></p>
-</footer>
-
+</div>
 </body>
 </html>
